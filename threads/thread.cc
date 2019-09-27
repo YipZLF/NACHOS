@@ -1,3 +1,10 @@
+/*
+ * @Description: In User Settings Edit
+ * @Author: your name
+ * @Date: 2019-09-20 19:43:49
+ * @LastEditTime: 2019-09-25 15:19:19
+ * @LastEditors: Please set LastEditors
+ */
 // thread.cc 
 //	Routines to manage threads.  There are four main operations:
 //
@@ -91,12 +98,12 @@ Thread::Fork(VoidFunctionPtr func, void *arg)
 	  name, (int) func, (int*) arg);
     
     StackAllocate(func, arg);
-
+    // 保持操作的原子性。不希望就绪队列被搞乱，所以在前后开关中断。
     IntStatus oldLevel = interrupt->SetLevel(IntOff);
     scheduler->ReadyToRun(this);	// ReadyToRun assumes that interrupts 
 					// are disabled!
     (void) interrupt->SetLevel(oldLevel);
-}    
+}
 
 //----------------------------------------------------------------------
 // Thread::CheckOverflow
