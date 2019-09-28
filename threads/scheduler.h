@@ -2,7 +2,7 @@
  * @Description: In User Settings Edit
  * @Author: your name
  * @Date: 2019-09-11 23:49:35
- * @LastEditTime: 2019-09-28 11:53:11
+ * @LastEditTime: 2019-09-28 12:05:54
  * @LastEditors: Please set LastEditors
  */
 // scheduler.h 
@@ -20,7 +20,6 @@
 #include "copyright.h"
 #include "list.h"
 #include "thread.h"
-#include "system.h"
 
 
 // The following class defines the scheduler/dispatcher abstraction -- 

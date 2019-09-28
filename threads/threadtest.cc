@@ -2,7 +2,7 @@
  * @Description: In User Settings Edit
  * @Author: your name
  * @Date: 2019-09-11 23:49:35
- * @LastEditTime: 2019-09-28 10:57:43
+ * @LastEditTime: 2019-09-28 15:56:28
  * @LastEditors: Please set LastEditors
  */
 // threadtest.cc 
@@ -31,6 +31,8 @@ int testnum = 1;
 void ThreadStatus(int arg){
     printf("Name\tUID\tTID\tStatus\n");
     for(int i = 0; i < MAX_THREAD_NUM;++i){
+        if(tidmap_array[i] == NULL)
+            continue;
         char status[10],name[10];
         char* _name=tidmap_array[i]->getName();
         int uid = tidmap_array[i]->getUID();
@@ -97,7 +99,7 @@ ThreadTest_TS()
 {
     DEBUG('t', "Entering ThreadTest_TS");
 
-    Thread *t = new Thread("TS");
+    Thread *t = new Thread("TS",0);
 
     t->Fork(ThreadStatus,(void*)1);
 

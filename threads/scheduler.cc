@@ -2,7 +2,7 @@
  * @Description: In User Settings Edit
  * @Author: your name
  * @Date: 2019-09-18 14:52:34
- * @LastEditTime: 2019-09-28 11:49:57
+ * @LastEditTime: 2019-09-28 15:52:58
  * @LastEditors: Please set LastEditors
  */
 // scheduler.cc 
@@ -29,7 +29,8 @@
 #include "scheduler.h"
 #include "memory.h"
 #include "system.h"
-
+Thread * tidmap_array[MAX_THREAD_NUM];
+int current_max_tid ; 
 //----------------------------------------------------------------------
 // Scheduler::Scheduler
 // 	Initialize the list of ready but not running threads to empty.
@@ -61,7 +62,7 @@ int Scheduler::AssignTID()
     int next_tid = current_max_tid+1;
     for(int i = 0; i < MAX_THREAD_NUM; ++i, 
         next_tid = (next_tid+1) % MAX_THREAD_NUM){
-        if(tidmap_array[next_tid] != NULL){
+        if(tidmap_array[next_tid] == NULL){
             return next_tid;
         }
     }

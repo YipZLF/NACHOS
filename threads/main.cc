@@ -2,7 +2,7 @@
  * @Description: In User Settings Edit
  * @Author: your name
  * @Date: 2019-09-11 23:49:35
- * @LastEditTime: 2019-09-28 11:25:05
+ * @LastEditTime: 2019-09-28 15:45:45
  * @LastEditors: Please set LastEditors
  */
 // main.cc 
@@ -59,7 +59,6 @@
 
 #include "utility.h"
 #include "system.h"
-#include "hello_world.h"
 
 #ifdef THREADS
 extern int testnum;
@@ -94,9 +93,7 @@ main(int argc, char **argv)
 					// for a particular command
 
     DEBUG('t', "Entering main");
-	print_hello();
-	printf("%s\n",argv[0]);
-    (void) Initialize(argc, argv);
+	(void) Initialize(argc, argv);
     
 #ifdef THREADS
     for (argc--, argv++; argc > 0; argc -= argCount, argv += argCount) {
