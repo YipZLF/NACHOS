@@ -1,3 +1,10 @@
+/*
+ * @Description: In User Settings Edit
+ * @Author: your name
+ * @Date: 2019-09-11 23:49:35
+ * @LastEditTime: 2019-09-28 10:57:43
+ * @LastEditors: Please set LastEditors
+ */
 // threadtest.cc 
 //	Simple test case for the threads assignment.
 //
@@ -15,6 +22,34 @@
 
 // testnum is set in main.cc
 int testnum = 1;
+
+//----------------------------------------------------------------------
+// ThreadStatus
+// 	Print out thread status.
+//----------------------------------------------------------------------
+
+void ThreadStatus(int arg){
+    printf("Name\tUID\tTID\tStatus\n");
+    for(int i = 0; i < MAX_THREAD_NUM;++i){
+        char status[10],name[10];
+        char* _name=tidmap_array[i]->getName();
+        int uid = tidmap_array[i]->getUID();
+        int tid = tidmap_array[i]->getTID();
+        strcpy(name, _name);
+        switch(tidmap_array[i]->getStatus()){
+            case JUST_CREATED: strcpy(status, "RUNNING" ); break;
+            case RUNNING: strcpy(status, "RUNNING" ); break;
+            case READY: strcpy(status, "RUNNING" ); break;
+            case BLOCKED: strcpy(status, "RUNNING" ); break;
+            default: 
+                DEBUG('t',"Thread %d \"%s\" status error: %d",
+                      tid,name,tidmap_array[i]->getStatus());
+                return ;
+        }
+        printf("%s\t%d\t%d\t%s\n",name,uid,tid,status);
+    }
+}
+
 
 //----------------------------------------------------------------------
 // SimpleThread
@@ -52,6 +87,21 @@ ThreadTest1()
     t->Fork(SimpleThread, (void*)1);
     SimpleThread(0);
 }
+//----------------------------------------------------------------------
+// ThreadTest_TS
+//  test threadstatus
+//----------------------------------------------------------------------
+
+void
+ThreadTest_TS()
+{
+    DEBUG('t', "Entering ThreadTest_TS");
+
+    Thread *t = new Thread("TS");
+
+    t->Fork(ThreadStatus,(void*)1);
+
+}
 
 //----------------------------------------------------------------------
 // ThreadTest
@@ -65,9 +115,12 @@ ThreadTest()
     case 1:
 	ThreadTest1();
 	break;
+    case 2:
+    ThreadTest_TS();
     default:
 	printf("No test specified.\n");
 	break;
     }
 }
+
 

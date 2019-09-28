@@ -2,7 +2,7 @@
  * @Description: In User Settings Edit
  * @Author: your name
  * @Date: 2019-09-11 23:49:35
- * @LastEditTime: 2019-09-20 10:21:58
+ * @LastEditTime: 2019-09-28 11:25:05
  * @LastEditors: Please set LastEditors
  */
 // main.cc 
@@ -72,6 +72,7 @@ extern void Print(char *file), PerformanceTest(void);
 extern void StartProcess(char *file), ConsoleTest(char *in, char *out);
 extern void MailTest(int networkID);
 
+
 //----------------------------------------------------------------------
 // main
 // 	Bootstrap the operating system kernel.  
@@ -94,6 +95,7 @@ main(int argc, char **argv)
 
     DEBUG('t', "Entering main");
 	print_hello();
+	printf("%s\n",argv[0]);
     (void) Initialize(argc, argv);
     
 #ifdef THREADS

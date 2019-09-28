@@ -15,7 +15,7 @@ ThreadRoot:
         .globl SWITCH
 SWITCH:
         movl %eax,_eax_save # save the value of eax
-        movl 4(%esp),%eax # move pointer to t1 into eax
+        movl 4(%esp),%eax # move [pointer to t1] into eax
         movl %ebx,8(%eax) # save registers
         movl %ecx,12(%eax)
         movl %edx,16(%eax)
@@ -27,7 +27,7 @@ SWITCH:
         movl %ebx,4(%eax) # store it
         movl 0(%esp),%ebx # get return address from stack into ebx
         movl %ebx,32(%eax) # save it into the pc storage
-        movl 8(%esp),%eax # move pointer to t2 into eax
+        movl 8(%esp),%eax # move [pointer to t2] into eax
         movl 4(%eax),%ebx # get new value for eax into ebx
         movl %ebx,_eax_save # save it
         movl 8(%eax),%ebx # retore old registers

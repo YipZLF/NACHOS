@@ -1,3 +1,10 @@
+/*
+ * @Description: In User Settings Edit
+ * @Author: your name
+ * @Date: 2019-09-18 16:02:49
+ * @LastEditTime: 2019-09-28 11:27:07
+ * @LastEditors: Please set LastEditors
+ */
 // thread.h 
 //	Data structures for managing threads.  A thread represents
 //	sequential execution of code within a program.
@@ -33,7 +40,6 @@
 // Copyright (c) 1992-1993 The Regents of the University of California.
 // All rights reserved.  See copyright.h for copyright notice and limitation 
 // of liability and disclaimer of warranty provisions.
-
 #ifndef THREAD_H
 #define THREAD_H
 
@@ -55,6 +61,9 @@
 // WATCH OUT IF THIS ISN'T BIG ENOUGH!!!!!
 #define StackSize	(4 * 1024)	// in words
 
+// Maximum number of threads is MAX_THREAD_NUM
+#define MAX_THREAD_NUM 128
+#define ID_NOT_ASSIGNED -1
 
 // Thread state
 enum ThreadStatus { JUST_CREATED, RUNNING, READY, BLOCKED };
@@ -82,6 +91,7 @@ class Thread {
 
   public:
     Thread(char* debugName);		// initialize a Thread 
+    Thread(char* debugName, int new_uid);
     ~Thread(); 				// deallocate a Thread
 					// NOTE -- thread being deleted
 					// must not be running when delete 
@@ -99,9 +109,12 @@ class Thread {
     void CheckOverflow();   			// Check if thread has 
 						// overflowed its stack
     void setStatus(ThreadStatus st) { status = st; }
+    int getTID(){return tid;}
+    int getUID(){return uid;}
     char* getName() { return (name); }
+    ThreadStatus getStatus() {return status;}
     void Print() { printf("%s, ", name); }
-
+    
   private:
     // some of the private data for this class is listed above
     
@@ -110,6 +123,8 @@ class Thread {
 					// (If NULL, don't deallocate stack)
     ThreadStatus status;		// ready, running or blocked
     char* name;
+    int tid;  // thread id number, max set to be MAX_THREAD_NUM-1
+    int uid;  // user id
 
     void StackAllocate(VoidFunctionPtr func, void *arg);
     					// Allocate a stack for thread.

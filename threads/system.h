@@ -1,3 +1,10 @@
+/*
+ * @Description: In User Settings Edit
+ * @Author: your name
+ * @Date: 2019-09-11 23:49:35
+ * @LastEditTime: 2019-09-28 11:47:14
+ * @LastEditors: Please set LastEditors
+ */
 // system.h 
 //	All global variables used in Nachos are defined here.
 //
@@ -22,6 +29,10 @@ extern void Initialize(int argc, char **argv); 	// Initialization,
 extern void Cleanup();				// Cleanup, called when
 						// Nachos is done.
 
+// The following array defines the array for threads info
+// tidmap_array[tid] -> the address of the tid-th thread
+extern Thread * tidmap_array[MAX_THREAD_NUM];
+extern int current_max_tid ;  			// current maximum tid
 extern Thread *currentThread;			// the thread holding the CPU
 extern Thread *threadToBeDestroyed;  		// the thread that just finished
 extern Scheduler *scheduler;			// the ready list

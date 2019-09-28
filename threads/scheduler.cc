@@ -2,8 +2,8 @@
  * @Description: In User Settings Edit
  * @Author: your name
  * @Date: 2019-09-18 14:52:34
- * @LastEditTime: 2019-09-18 14:52:34
- * @LastEditors: your name
+ * @LastEditTime: 2019-09-28 11:49:57
+ * @LastEditors: Please set LastEditors
  */
 // scheduler.cc 
 //	Routines to choose the next thread to run, and to dispatch to
@@ -27,6 +27,7 @@
 
 #include "copyright.h"
 #include "scheduler.h"
+#include "memory.h"
 #include "system.h"
 
 //----------------------------------------------------------------------
@@ -36,6 +37,8 @@
 
 Scheduler::Scheduler()
 { 
+    memset(tidmap_array,NULL,sizeof(tidmap_array));
+    current_max_tid = -1;
     readyList = new List; 
 } 
 
@@ -48,6 +51,22 @@ Scheduler::~Scheduler()
 { 
     delete readyList; 
 } 
+
+//----------------------------------------------------------------------
+// Scheduler::AssignTID
+// 	Assign tid for a new thread
+//----------------------------------------------------------------------
+int Scheduler::AssignTID()
+{
+    int next_tid = current_max_tid+1;
+    for(int i = 0; i < MAX_THREAD_NUM; ++i, 
+        next_tid = (next_tid+1) % MAX_THREAD_NUM){
+        if(tidmap_array[next_tid] != NULL){
+            return next_tid;
+        }
+    }
+    return -1;
+}
 
 //----------------------------------------------------------------------
 // Scheduler::ReadyToRun
@@ -129,8 +148,10 @@ Scheduler::Run (Thread *nextThread)
     // before now (for example, in Thread::Finish()), because up to this
     // point, we were still running on the old thread's stack!
     if (threadToBeDestroyed != NULL) {
+        int tid_to_be_destroyed = threadToBeDestroyed->getTID();
         delete threadToBeDestroyed;
 	    threadToBeDestroyed = NULL;
+        tidmap_array[tid_to_be_destroyed] = NULL;
     }
     
 #ifdef USER_PROGRAM

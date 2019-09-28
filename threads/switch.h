@@ -1,3 +1,10 @@
+/*
+ * @Description: In User Settings Edit
+ * @Author: your name
+ * @Date: 2019-09-27 22:15:43
+ * @LastEditTime: 2019-09-27 22:17:30
+ * @LastEditors: Please set LastEditors
+ */
 /* switch.h
  *	Definitions needed for implementing context switching.
  *
@@ -139,12 +146,12 @@
 #define _PC      32
 
 /* These definitions are used in Thread::AllocateStack(). */
-#define PCState         (_PC/4-1)
-#define FPState         (_EBP/4-1)
-#define InitialPCState  (_ESI/4-1)
-#define InitialArgState (_EDX/4-1)
-#define WhenDonePCState (_EDI/4-1)
-#define StartupPCState  (_ECX/4-1)
+#define PCState         (_PC/4-1)   //7
+#define FPState         (_EBP/4-1)  //4
+#define InitialPCState  (_ESI/4-1)  //5
+#define InitialArgState (_EDX/4-1)  //3
+#define WhenDonePCState (_EDI/4-1)  //6
+#define StartupPCState  (_ECX/4-1)  //2
 
 #define InitialPC       %esi
 #define InitialArg      %edx

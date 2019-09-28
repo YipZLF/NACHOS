@@ -1,3 +1,10 @@
+/*
+ * @Description: In User Settings Edit
+ * @Author: your name
+ * @Date: 2019-09-11 23:49:35
+ * @LastEditTime: 2019-09-28 11:44:27
+ * @LastEditors: Please set LastEditors
+ */
 // system.cc 
 //	Nachos initialization and cleanup routines.
 //
@@ -18,6 +25,8 @@ Interrupt *interrupt;			// interrupt status
 Statistics *stats;			// performance metrics
 Timer *timer;				// the hardware timer device,
 					// for invoking context switches
+
+
 
 #ifdef FILESYS_NEEDED
 FileSystem  *fileSystem;

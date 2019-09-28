@@ -2,7 +2,7 @@
  * @Description: In User Settings Edit
  * @Author: your name
  * @Date: 2019-09-20 19:43:49
- * @LastEditTime: 2019-09-25 15:19:19
+ * @LastEditTime: 2019-09-28 11:16:46
  * @LastEditors: Please set LastEditors
  */
 // thread.cc 
@@ -20,7 +20,7 @@
 // Copyright (c) 1992-1993 The Regents of the University of California.
 // All rights reserved.  See copyright.h for copyright notice and limitation 
 // of liability and disclaimer of warranty provisions.
-
+#pragma once
 #include "copyright.h"
 #include "thread.h"
 #include "switch.h"
@@ -45,6 +45,20 @@ Thread::Thread(char* threadName)
     stackTop = NULL;
     stack = NULL;
     status = JUST_CREATED;
+    tid = uid = ID_NOT_ASSIGNED;
+#ifdef USER_PROGRAM
+    space = NULL;
+#endif
+}
+
+Thread::Thread(char* threadName,int new_uid)
+{
+    name = threadName;
+    stackTop = NULL;
+    stack = NULL;
+    status = JUST_CREATED;
+    tid = ID_NOT_ASSIGNED;
+    uid = new_uid;
 #ifdef USER_PROGRAM
     space = NULL;
 #endif
@@ -94,15 +108,24 @@ Thread::~Thread()
 void 
 Thread::Fork(VoidFunctionPtr func, void *arg)
 {
-    DEBUG('t', "Forking thread \"%s\" with func = 0x%x, arg = %d\n",
-	  name, (int) func, (int*) arg);
-    
-    StackAllocate(func, arg);
-    // 保持操作的原子性。不希望就绪队列被搞乱，所以在前后开关中断。
-    IntStatus oldLevel = interrupt->SetLevel(IntOff);
-    scheduler->ReadyToRun(this);	// ReadyToRun assumes that interrupts 
-					// are disabled!
-    (void) interrupt->SetLevel(oldLevel);
+    int new_tid = scheduler->AssignTID();
+    if(new_tid == -1){
+        DEBUG('t',"Failed to fork thread \"%s\", because it exceeds the maximum threads count.\n",
+        name);
+    }else{
+        tid = new_tid;
+        tidmap_array[tid] = this;
+
+        DEBUG('t', "Forking thread %d \"%s\" with func = 0x%x, arg = %d\n",
+        tid, name, (int) func, (int*) arg);
+        
+        StackAllocate(func, arg);
+        // 保持操作的原子性。不希望就绪队列被搞乱，所以在前后开关中断。
+        IntStatus oldLevel = interrupt->SetLevel(IntOff);
+        scheduler->ReadyToRun(this);	// ReadyToRun assumes that interrupts 
+                        // are disabled!
+        (void) interrupt->SetLevel(oldLevel);
+    }
 }
 
 //----------------------------------------------------------------------

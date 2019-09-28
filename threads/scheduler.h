@@ -1,3 +1,10 @@
+/*
+ * @Description: In User Settings Edit
+ * @Author: your name
+ * @Date: 2019-09-11 23:49:35
+ * @LastEditTime: 2019-09-28 11:53:11
+ * @LastEditors: Please set LastEditors
+ */
 // scheduler.h 
 //	Data structures for the thread dispatcher and scheduler.
 //	Primarily, the list of threads that are ready to run.
@@ -9,9 +16,12 @@
 #ifndef SCHEDULER_H
 #define SCHEDULER_H
 
+
 #include "copyright.h"
 #include "list.h"
 #include "thread.h"
+#include "system.h"
+
 
 // The following class defines the scheduler/dispatcher abstraction -- 
 // the data structures and operations needed to keep track of which 
@@ -22,6 +32,7 @@ class Scheduler {
     Scheduler();			// Initialize list of ready threads 
     ~Scheduler();			// De-allocate ready list
 
+    int AssignTID();  // assign tid for a new thread
     void ReadyToRun(Thread* thread);	// Thread can be dispatched.
     Thread* FindNextToRun();		// Dequeue first thread on the ready 
 					// list, if any, and return thread.
@@ -31,6 +42,7 @@ class Scheduler {
   private:
     List *readyList;  		// queue of threads that are ready to run,
 				// but not running
+
 };
 
 #endif // SCHEDULER_H
