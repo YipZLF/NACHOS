@@ -2,7 +2,7 @@
  * @Description: In User Settings Edit
  * @Author: your name
  * @Date: 2019-09-11 23:49:35
- * @LastEditTime: 2019-10-02 14:30:33
+ * @LastEditTime: 2019-10-02 14:56:07
  * @LastEditors: Please set LastEditors
  */
 // threadtest.cc 
@@ -90,8 +90,8 @@ SimpleThread_mq(int which)
     int num;
     
     for (num = 0; num < which; num++) {
-	printf("*** thread %d %s looped %d times, prio = %d, started at ticks %d\n", currentThread->getTID(),
-            currentThread->getName(), num,currentThread->getPriority(),currentThread->getStartTime());
+	    printf("*** thread %d %s looped %d times, prio = %d, started at ticks %d\n", currentThread->getTID(),
+                currentThread->getName(), num,currentThread->getPriority(),currentThread->getStartTime());
         currentThread->Yield();
     }
 }

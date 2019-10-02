@@ -2,7 +2,7 @@
  * @Description: In User Settings Edit
  * @Author: your name
  * @Date: 2019-09-18 14:52:34
- * @LastEditTime: 2019-10-02 14:29:15
+ * @LastEditTime: 2019-10-02 15:40:27
  * @LastEditors: Please set LastEditors
  */
 // scheduler.cc 
@@ -90,19 +90,18 @@ Scheduler::ReadyToRun (Thread *thread)
     thread->setStatus(READY);
     int used_ticks = thread->getUsedTicks(stats->totalTicks);
     int prio = thread->getPriority();
-    int new_prio;
+    int new_prio = prio;
     DEBUG('t',"Thread %d %s used ticks %d started at %d \n Used slice %d, Slice len %d \n",
         currentThread->getTID(),currentThread->getName(),used_ticks, currentThread->getStartTime(),
         USED_TIME_SLICE(used_ticks,prio) ,timeslice_len[prio]);
 
     if( old_status != JUST_CREATED && USED_TIME_SLICE(used_ticks,prio) >= MAX_TIME_SLICE_CNT){
-        new_prio = (prio+1 > LOWEST_PRIORITY)?
-                        LOWEST_PRIORITY: prio +1;
+        new_prio = (prio+1 > LOWEST_PRIORITY)? (LOWEST_PRIORITY): (prio +1);
+        thread->setPriority(new_prio);
         thread->setUsedTicks(0);
-    }else{
-        new_prio = prio;
     }
-    thread->setPriority(new_prio);
+
+    DEBUG('t', "!!!!!Putting thread %s on ready list %d\n", thread->getName(),new_prio);
     readyMultiqueue[new_prio]->Append((void*)thread);
 }
 
@@ -117,27 +116,34 @@ Scheduler::ReadyToRun (Thread *thread)
 Thread *
 Scheduler::FindNextToRun ()
 {
+    int used_ticks = currentThread->getUsedTicks(stats->totalTicks);
+    int prio = currentThread->getPriority();
+    ThreadStatus status = currentThread->getStatus();
+    if(USED_TIME_SLICE(used_ticks,prio) < MAX_TIME_SLICE_CNT && status==RUNNING){
+       //     printf("Not switching!! used time slices: %d max :%d\n",USED_TIME_SLICE(used_ticks,prio) , MAX_TIME_SLICE_CNT);
+        return currentThread;
+    }
+    
     List *next_readyList = NULL;
+    int mark =0;
     for(int i = HIGHEST_PRIORITY; i<=LOWEST_PRIORITY;++i){
         if(!readyMultiqueue[i]->IsEmpty()){
             next_readyList = readyMultiqueue[i];
+            mark = i;
             break;
         }
     }
+
+
     if(next_readyList==NULL) return NULL;
     else{
-        int used_ticks = currentThread->getUsedTicks(stats->totalTicks);
        // printf("used ticks %d\n",used_ticks);
-        int prio = currentThread->getPriority();
        // printf("prio %d\n",prio);
-        if(USED_TIME_SLICE(used_ticks,prio) < MAX_TIME_SLICE_CNT){
-       //     printf("Not switching!! used time slices: %d max :%d\n",USED_TIME_SLICE(used_ticks,prio) , MAX_TIME_SLICE_CNT);
-            return currentThread;
-        }else{
-            readyList = next_readyList;
-            Thread * next_thread = (Thread*)readyList->Remove();
-            return next_thread;
-        }
+        Thread * next_thread = (Thread*)next_readyList->Remove();
+
+    DEBUG('t', "!!!!!Removing thread %s on ready list %d\n", next_thread->getName(),mark);
+        readyList = next_readyList;
+        return next_thread;
     }
     /*
     Thread* next_thread = (Thread *)readyList->Remove();
@@ -178,7 +184,7 @@ void
 Scheduler::Run (Thread *nextThread)
 {
     Thread *oldThread = currentThread;
-    
+
 #ifdef USER_PROGRAM			// ignore until running user programs 
     if (currentThread->space != NULL) {	// if this thread is a user program,
         currentThread->SaveUserState(); // save the user's CPU registers

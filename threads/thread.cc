@@ -2,7 +2,7 @@
  * @Description: In User Settings Edit
  * @Author: your name
  * @Date: 2019-09-20 19:43:49
- * @LastEditTime: 2019-10-02 13:58:55
+ * @LastEditTime: 2019-10-02 15:33:12
  * @LastEditors: Please set LastEditors
  */
 // thread.cc 
@@ -217,7 +217,8 @@ Thread::Yield ()
     
     nextThread = scheduler->FindNextToRun();
     if (nextThread != NULL) {
-        scheduler->ReadyToRun(this);
+        if(nextThread != this)
+            scheduler->ReadyToRun(this);
         scheduler->Run(nextThread);
     }
     (void) interrupt->SetLevel(oldLevel);
@@ -256,6 +257,8 @@ Thread::Sleep ()
     while ((nextThread = scheduler->FindNextToRun()) == NULL)
 	interrupt->Idle();	// no one to run, wait for an interrupt
         
+    DEBUG('t', "Next thread prio: \"%d\"\n", nextThread->getPriority());
+
     scheduler->Run(nextThread); // returns when we've been signalled
 }
 
