@@ -2,7 +2,7 @@
  * @Description: In User Settings Edit
  * @Author: your name
  * @Date: 2019-09-11 23:49:35
- * @LastEditTime: 2019-10-02 11:34:12
+ * @LastEditTime: 2019-10-02 14:30:33
  * @LastEditors: Please set LastEditors
  */
 // threadtest.cc 
@@ -84,6 +84,17 @@ SimpleThread_prio(int which)
         currentThread->Yield();
     }
 }
+void
+SimpleThread_mq(int which)
+{
+    int num;
+    
+    for (num = 0; num < which; num++) {
+	printf("*** thread %d %s looped %d times, prio = %d, started at ticks %d\n", currentThread->getTID(),
+            currentThread->getName(), num,currentThread->getPriority(),currentThread->getStartTime());
+        currentThread->Yield();
+    }
+}
 
 void ForkThread(int t){
     ((Thread *)t)->Fork(SimpleThread_prio,(void*)1);
@@ -127,7 +138,7 @@ ThreadTest_TS()
 void
 ThreadTest_Prio()
 {
-    DEBUG('t', "Entering ThreadTest_TS");
+    DEBUG('t', "Entering ThreadTest_prio");
 
     Thread *t0 = new Thread("test_prio0",1,0);
     Thread *t1 = new Thread("test_prio1",1,1);
@@ -139,6 +150,21 @@ ThreadTest_Prio()
     t1->Fork(SimpleThread_prio,(void*)1);
     t3->Fork(SimpleThread_prio,(void*)1);
     t2->Fork(SimpleThread_prio,(void*)1);
+
+}
+
+void
+ThreadTest_multiqueue()
+{
+    DEBUG('t', "Entering ThreadTest_multiqueue");
+
+    Thread *t1 = new Thread("test_prio1",1,0);
+    Thread *t2 = new Thread("test_prio2",1,0);
+    Thread *t3 = new Thread("test_prio3",1,0);
+
+    t1->Fork(SimpleThread_mq,(void*)5);
+    t2->Fork(SimpleThread_mq,(void*)10);
+    t3->Fork(SimpleThread_mq,(void*)20);
 
 }
 
@@ -157,6 +183,8 @@ ThreadTest()
             ThreadTest_TS(); break;
         case 3:
             ThreadTest_Prio(); break;
+        case 4:
+            ThreadTest_multiqueue(); break;
         default:
             printf("No test specified.\n"); break;
     }

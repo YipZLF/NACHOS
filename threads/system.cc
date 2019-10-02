@@ -2,7 +2,7 @@
  * @Description: In User Settings Edit
  * @Author: your name
  * @Date: 2019-09-11 23:49:35
- * @LastEditTime: 2019-09-28 11:44:27
+ * @LastEditTime: 2019-10-02 14:15:47
  * @LastEditors: Please set LastEditors
  */
 // system.cc 
@@ -150,7 +150,7 @@ Initialize(int argc, char **argv)
     // We didn't explicitly allocate the current thread we are running in.
     // But if it ever tries to give up the CPU, we better have a Thread
     // object to save its state. 
-    currentThread = new Thread("main");		
+    currentThread = new Thread("main",0,0);		
     currentThread->setStatus(RUNNING);
 
     interrupt->Enable();

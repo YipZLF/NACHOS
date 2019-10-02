@@ -2,7 +2,7 @@
  * @Description: In User Settings Edit
  * @Author: your name
  * @Date: 2019-09-20 19:43:49
- * @LastEditTime: 2019-10-02 11:56:44
+ * @LastEditTime: 2019-10-02 13:58:55
  * @LastEditors: Please set LastEditors
  */
 // thread.cc 
@@ -62,6 +62,7 @@ Thread::Thread(char* threadName,int new_uid,int new_prio)
     uid = new_uid;
     prio = new_prio;
     used_ticks = 0;
+    start_time = 0;
 #ifdef USER_PROGRAM
     space = NULL;
 #endif
@@ -350,4 +351,5 @@ Thread::RestoreUserState()
     for (int i = 0; i < NumTotalRegs; i++)
 	machine->WriteRegister(i, userRegisters[i]);
 }
+
 #endif

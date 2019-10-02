@@ -2,7 +2,7 @@
  * @Description: In User Settings Edit
  * @Author: your name
  * @Date: 2019-09-18 16:02:49
- * @LastEditTime: 2019-10-02 11:56:30
+ * @LastEditTime: 2019-10-02 13:05:32
  * @LastEditors: Please set LastEditors
  */
 // thread.h 
@@ -117,10 +117,12 @@ class Thread {
     int getUID(){return uid;}
     char* getName() { return (name); }
     int getPriority(){return prio;}
-    int getUsedTicks(){return used_ticks;}
+    int getUsedTicks(int current_time){return used_ticks = (current_time - start_time);};
+    int getStartTime(){return start_time;}
     ThreadStatus getStatus() {return status;}
     void setPriority(int new_prio) {prio = new_prio;}
     void setUsedTicks(int new_used_ticks){used_ticks = new_used_ticks;}
+    void setStartTime(int new_start_time){start_time = new_start_time;}
     void Print() { printf("%s, ", name); }
     
   private:
@@ -135,6 +137,7 @@ class Thread {
     int uid;  // user id
     int prio; // priority of the thread
     int used_ticks;
+    int start_time;
     void StackAllocate(VoidFunctionPtr func, void *arg);
     					// Allocate a stack for thread.
 					// Used internally by Fork()

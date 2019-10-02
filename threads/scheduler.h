@@ -2,7 +2,7 @@
  * @Description: In User Settings Edit
  * @Author: your name
  * @Date: 2019-09-11 23:49:35
- * @LastEditTime: 2019-10-02 11:58:08
+ * @LastEditTime: 2019-10-02 12:14:14
  * @LastEditors: Please set LastEditors
  */
 // scheduler.h 
@@ -21,6 +21,9 @@
 #include "list.h"
 #include "thread.h"
 
+// calculate how many time slices are used
+#define USED_TIME_SLICE(used_ticks,prio) (used_ticks / timeslice_len[prio])
+#define MAX_TIME_SLICE_CNT 1
 
 // The following class defines the scheduler/dispatcher abstraction -- 
 // the data structures and operations needed to keep track of which 
