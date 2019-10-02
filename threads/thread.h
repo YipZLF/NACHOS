@@ -2,7 +2,7 @@
  * @Description: In User Settings Edit
  * @Author: your name
  * @Date: 2019-09-18 16:02:49
- * @LastEditTime: 2019-09-28 11:27:07
+ * @LastEditTime: 2019-10-02 11:56:30
  * @LastEditors: Please set LastEditors
  */
 // thread.h 
@@ -61,12 +61,15 @@
 // WATCH OUT IF THIS ISN'T BIG ENOUGH!!!!!
 #define StackSize	(4 * 1024)	// in words
 
+// Thread state
+enum ThreadStatus { JUST_CREATED, RUNNING, READY, BLOCKED };
+
 // Maximum number of threads is MAX_THREAD_NUM
 #define MAX_THREAD_NUM 128
 #define ID_NOT_ASSIGNED -1
-
-// Thread state
-enum ThreadStatus { JUST_CREATED, RUNNING, READY, BLOCKED };
+#define PRIORITY_LEVEL_NUM 5
+#define LOWEST_PRIORITY 4
+#define HIGHEST_PRIORITY 0
 
 // external function, dummy routine whose sole job is to call Thread::Print
 extern void ThreadPrint(int arg);	 
@@ -90,8 +93,9 @@ class Thread {
     void *machineState[MachineStateSize];  // all registers except for stackTop
 
   public:
-    Thread(char* debugName);		// initialize a Thread 
-    Thread(char* debugName, int new_uid);
+    //Thread(char* debugName);		// initialize a Thread 
+    Thread(char* debugName, int new_uid= ID_NOT_ASSIGNED,
+          int new_prio = LOWEST_PRIORITY);
     ~Thread(); 				// deallocate a Thread
 					// NOTE -- thread being deleted
 					// must not be running when delete 
@@ -112,7 +116,11 @@ class Thread {
     int getTID(){return tid;}
     int getUID(){return uid;}
     char* getName() { return (name); }
+    int getPriority(){return prio;}
+    int getUsedTicks(){return used_ticks;}
     ThreadStatus getStatus() {return status;}
+    void setPriority(int new_prio) {prio = new_prio;}
+    void setUsedTicks(int new_used_ticks){used_ticks = new_used_ticks;}
     void Print() { printf("%s, ", name); }
     
   private:
@@ -125,7 +133,8 @@ class Thread {
     char* name;
     int tid;  // thread id number, max set to be MAX_THREAD_NUM-1
     int uid;  // user id
-
+    int prio; // priority of the thread
+    int used_ticks;
     void StackAllocate(VoidFunctionPtr func, void *arg);
     					// Allocate a stack for thread.
 					// Used internally by Fork()

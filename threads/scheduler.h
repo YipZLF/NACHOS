@@ -2,7 +2,7 @@
  * @Description: In User Settings Edit
  * @Author: your name
  * @Date: 2019-09-11 23:49:35
- * @LastEditTime: 2019-09-28 12:05:54
+ * @LastEditTime: 2019-10-02 11:58:08
  * @LastEditors: Please set LastEditors
  */
 // scheduler.h 
@@ -41,7 +41,7 @@ class Scheduler {
   private:
     List *readyList;  		// queue of threads that are ready to run,
 				// but not running
-
+    List *readyMultiqueue[PRIORITY_LEVEL_NUM];
 };
 
 #endif // SCHEDULER_H

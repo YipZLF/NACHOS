@@ -2,7 +2,7 @@
  * @Description: In User Settings Edit
  * @Author: your name
  * @Date: 2019-09-11 23:49:35
- * @LastEditTime: 2019-09-28 15:56:28
+ * @LastEditTime: 2019-10-02 11:34:12
  * @LastEditors: Please set LastEditors
  */
 // threadtest.cc 
@@ -73,6 +73,21 @@ SimpleThread(int which)
     }
 }
 
+void
+SimpleThread_prio(int which)
+{
+    int num;
+    
+    for (num = 0; num < 3; num++) {
+	printf("*** thread %d %s looped %d times, prio = %d\n", currentThread->getTID(),
+            currentThread->getName(), num,currentThread->getPriority());
+        currentThread->Yield();
+    }
+}
+
+void ForkThread(int t){
+    ((Thread *)t)->Fork(SimpleThread_prio,(void*)1);
+}
 //----------------------------------------------------------------------
 // ThreadTest1
 // 	Set up a ping-pong between two threads, by forking a thread 
@@ -82,7 +97,7 @@ SimpleThread(int which)
 void
 ThreadTest1()
 {
-    DEBUG('t', "Entering ThreadTest1");
+    DEBUG('t', "Entering ThreadTest1\n");
 
     Thread *t = new Thread("forked thread");
 
@@ -97,11 +112,33 @@ ThreadTest1()
 void
 ThreadTest_TS()
 {
-    DEBUG('t', "Entering ThreadTest_TS");
+    DEBUG('t', "Entering ThreadTest_TS\n");
 
-    Thread *t = new Thread("TS",0);
+    Thread *t = new Thread("TS",0,0);
 
     t->Fork(ThreadStatus,(void*)1);
+
+}
+//----------------------------------------------------------------------
+// ThreadTest_Prio
+//  test priority
+//----------------------------------------------------------------------
+
+void
+ThreadTest_Prio()
+{
+    DEBUG('t', "Entering ThreadTest_TS");
+
+    Thread *t0 = new Thread("test_prio0",1,0);
+    Thread *t1 = new Thread("test_prio1",1,1);
+    Thread *t2 = new Thread("test_prio2",1,2);
+    Thread *t3 = new Thread("test_prio3",1,3);
+
+    interrupt->Schedule(ForkThread,(int)t0,50,ConsoleWriteInt);
+    
+    t1->Fork(SimpleThread_prio,(void*)1);
+    t3->Fork(SimpleThread_prio,(void*)1);
+    t2->Fork(SimpleThread_prio,(void*)1);
 
 }
 
@@ -114,14 +151,14 @@ void
 ThreadTest()
 {
     switch (testnum) {
-    case 1:
-	ThreadTest1();
-	break;
-    case 2:
-    ThreadTest_TS();
-    default:
-	printf("No test specified.\n");
-	break;
+        case 1:
+            ThreadTest1(); break;
+        case 2:
+            ThreadTest_TS(); break;
+        case 3:
+            ThreadTest_Prio(); break;
+        default:
+            printf("No test specified.\n"); break;
     }
 }
 

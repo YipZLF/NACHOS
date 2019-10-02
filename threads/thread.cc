@@ -2,7 +2,7 @@
  * @Description: In User Settings Edit
  * @Author: your name
  * @Date: 2019-09-20 19:43:49
- * @LastEditTime: 2019-09-28 11:16:46
+ * @LastEditTime: 2019-10-02 11:56:44
  * @LastEditors: Please set LastEditors
  */
 // thread.cc 
@@ -38,7 +38,7 @@
 //
 //	"threadName" is an arbitrary string, useful for debugging.
 //----------------------------------------------------------------------
-
+/*
 Thread::Thread(char* threadName)
 {
     name = threadName;
@@ -46,12 +46,13 @@ Thread::Thread(char* threadName)
     stack = NULL;
     status = JUST_CREATED;
     tid = uid = ID_NOT_ASSIGNED;
+    prio = LOWEST_PRIORITY;
 #ifdef USER_PROGRAM
     space = NULL;
 #endif
-}
+}*/
 
-Thread::Thread(char* threadName,int new_uid)
+Thread::Thread(char* threadName,int new_uid,int new_prio)
 {
     name = threadName;
     stackTop = NULL;
@@ -59,6 +60,8 @@ Thread::Thread(char* threadName,int new_uid)
     status = JUST_CREATED;
     tid = ID_NOT_ASSIGNED;
     uid = new_uid;
+    prio = new_prio;
+    used_ticks = 0;
 #ifdef USER_PROGRAM
     space = NULL;
 #endif
@@ -213,8 +216,8 @@ Thread::Yield ()
     
     nextThread = scheduler->FindNextToRun();
     if (nextThread != NULL) {
-	scheduler->ReadyToRun(this);
-	scheduler->Run(nextThread);
+        scheduler->ReadyToRun(this);
+        scheduler->Run(nextThread);
     }
     (void) interrupt->SetLevel(oldLevel);
 }

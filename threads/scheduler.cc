@@ -2,7 +2,7 @@
  * @Description: In User Settings Edit
  * @Author: your name
  * @Date: 2019-09-18 14:52:34
- * @LastEditTime: 2019-09-28 15:52:58
+ * @LastEditTime: 2019-10-02 11:59:22
  * @LastEditors: Please set LastEditors
  */
 // scheduler.cc 
@@ -40,7 +40,9 @@ Scheduler::Scheduler()
 { 
     memset(tidmap_array,NULL,sizeof(tidmap_array));
     current_max_tid = -1;
-    readyList = new List; 
+    for(int i = 0 ;i < PRIORITY_LEVEL_NUM; ++i)
+        readyMultiqueue[i] = new List; 
+    readyList = readyMultiqueue[HIGHEST_PRIORITY];
 } 
 
 //----------------------------------------------------------------------
@@ -50,7 +52,8 @@ Scheduler::Scheduler()
 
 Scheduler::~Scheduler()
 { 
-    delete readyList; 
+    for(int i = 0 ;i < PRIORITY_LEVEL_NUM; ++i)
+        delete readyMultiqueue[i];  
 } 
 
 //----------------------------------------------------------------------
@@ -83,7 +86,8 @@ Scheduler::ReadyToRun (Thread *thread)
     DEBUG('t', "Putting thread %s on ready list.\n", thread->getName());
 
     thread->setStatus(READY);
-    readyList->Append((void *)thread);
+    int prio = thread->getPriority();
+    readyList->SortedInsert((void*)thread,prio);
 }
 
 //----------------------------------------------------------------------
@@ -97,7 +101,24 @@ Scheduler::ReadyToRun (Thread *thread)
 Thread *
 Scheduler::FindNextToRun ()
 {
-    return (Thread *)readyList->Remove();
+    Thread* next_thread = (Thread *)readyList->Remove();
+    if(next_thread == NULL)
+        return NULL;
+    else{
+        int old_prio = currentThread->getPriority();
+        
+        int new_prio = next_thread->getPriority();
+        if(new_prio < old_prio || currentThread->getStatus()!=RUNNING){ //higher priority
+            return next_thread;
+        }
+        else{
+            DEBUG('t',"failed to find next to run: \n old thread %d: %s, prio = %d \n new thread %d: %s, prio = %d \n",
+                        currentThread->getTID(),currentThread->getName(),currentThread->getPriority(),
+                        next_thread->getTID(),next_thread->getName(),next_thread->getPriority());
+            readyList->SortedInsert((void*)next_thread,new_prio);
+            return NULL;
+        }
+    } 
 }
 
 //----------------------------------------------------------------------
