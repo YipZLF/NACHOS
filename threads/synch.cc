@@ -100,10 +100,39 @@ Semaphore::V()
 // Dummy functions -- so we can compile our later assignments 
 // Note -- without a correct implementation of Condition::Wait(), 
 // the test case in the network assignment won't work!
-Lock::Lock(char* debugName) {}
+/*
+Lock:
+    维护一个信号量c，初始值为1，队列为空。lock初始值为Free
+    acquire：
+        如果lock为free，那么可以进入{
+            lock = busy;
+        }
+        P(c)；
+    Release:
+        if(isHeldByCurrentThread()){
+            lock = free;
+            V(c);
+        }else{
+            throw exception
+        }
+
+*/
+Lock::Lock(char* debugName,int initialValue):lock_sem(debugName,initialValue),lock_thread(NULL) {}
 Lock::~Lock() {}
-void Lock::Acquire() {}
-void Lock::Release() {}
+void Lock::Acquire() {
+    IntStatus oldLevel = interrupt->SetLevel(IntOff);
+    lock_sem.P();
+    lock_thread = currentThread;
+    (void) interrupt->SetLevel(oldLevel);
+}
+void Lock::Release() {
+    IntStatus oldLevel = interrupt->SetLevel(IntOff);
+    ASSERT(lock_thread == currentThread)
+    lock_sem.V();
+    lock_thread = NULL;
+    (void) interrupt->SetLevel(oldLevel);
+}
+bool Lock::isHeldByCurrentThread(){return (lock_thread==currentThread);}
 
 Condition::Condition(char* debugName) { }
 Condition::~Condition() { }

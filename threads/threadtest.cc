@@ -2,7 +2,7 @@
  * @Description: In User Settings Edit
  * @Author: your name
  * @Date: 2019-09-11 23:49:35
- * @LastEditTime: 2019-10-02 14:56:07
+ * @LastEditTime: 2019-10-02 18:49:59
  * @LastEditors: Please set LastEditors
  */
 // threadtest.cc 
@@ -23,9 +23,46 @@
 // testnum is set in main.cc
 int testnum = 1;
 
+
 //----------------------------------------------------------------------
-// ThreadStatus
-// 	Print out thread status.
+// SimpleThread
+// 	Loop 5 times, yielding the CPU to another ready thread 
+//	each iteration.
+//
+//	"which" is simply a number identifying the thread, for debugging
+//	purposes.
+//----------------------------------------------------------------------
+
+void
+SimpleThread(int which)
+{
+    int num;
+    
+    for (num = 0; num < 5; num++) {
+	printf("*** thread %d looped %d times\n", which, num);
+        currentThread->Yield();
+    }
+}
+
+//----------------------------------------------------------------------
+// ThreadTest1
+// 	Set up a ping-pong between two threads, by forking a thread 
+//	to call SimpleThread, and then calling SimpleThread ourselves.
+//----------------------------------------------------------------------
+
+void
+ThreadTest1()
+{
+    DEBUG('t', "Entering ThreadTest1\n");
+
+    Thread *t = new Thread("forked thread");
+
+    t->Fork(SimpleThread, (void*)1);
+    SimpleThread(0);
+}
+//----------------------------------------------------------------------
+// ThreadTest_TS
+//  test threadstatus
 //----------------------------------------------------------------------
 
 void ThreadStatus(int arg){
@@ -52,38 +89,44 @@ void ThreadStatus(int arg){
     }
 }
 
-
-//----------------------------------------------------------------------
-// SimpleThread
-// 	Loop 5 times, yielding the CPU to another ready thread 
-//	each iteration.
-//
-//	"which" is simply a number identifying the thread, for debugging
-//	purposes.
-//----------------------------------------------------------------------
-
-void
-SimpleThread(int which)
-{
-    int num;
-    
-    for (num = 0; num < 5; num++) {
-	printf("*** thread %d looped %d times\n", which, num);
-        currentThread->Yield();
-    }
+void ThreadTest_TS(){
+    DEBUG('t', "Entering ThreadTest_TS\n");
+    Thread *t = new Thread("TS",0,0);
+    t->Fork(ThreadStatus,(void*)1);
 }
-
-void
-SimpleThread_prio(int which)
-{
+//----------------------------------------------------------------------
+// ThreadTest_Prio
+//  test priority
+//----------------------------------------------------------------------
+void SimpleThread_prio(int which){
     int num;
-    
     for (num = 0; num < 3; num++) {
-	printf("*** thread %d %s looped %d times, prio = %d\n", currentThread->getTID(),
-            currentThread->getName(), num,currentThread->getPriority());
+	    printf("*** thread %d %s looped %d times, prio = %d\n", currentThread->getTID(),
+                currentThread->getName(), num,currentThread->getPriority());
         currentThread->Yield();
     }
 }
+
+void ForkThread(int t){
+    ((Thread *)t)->Fork(SimpleThread_prio,(void*)1);
+}
+
+void ThreadTest_Prio(){
+    DEBUG('t', "Entering ThreadTest_prio");
+    Thread *t0 = new Thread("test_prio0",1,0);
+    Thread *t1 = new Thread("test_prio1",1,1);
+    Thread *t2 = new Thread("test_prio2",1,2);
+    Thread *t3 = new Thread("test_prio3",1,3);
+
+    interrupt->Schedule(ForkThread,(int)t0,50,ConsoleWriteInt);
+    
+    t1->Fork(SimpleThread_prio,(void*)1);
+    t3->Fork(SimpleThread_prio,(void*)1);
+    t2->Fork(SimpleThread_prio,(void*)1);
+}
+//---------------------------------------------------
+// Multiqueue test
+//---------------------------------------------------
 void
 SimpleThread_mq(int which)
 {
@@ -96,76 +139,15 @@ SimpleThread_mq(int which)
     }
 }
 
-void ForkThread(int t){
-    ((Thread *)t)->Fork(SimpleThread_prio,(void*)1);
-}
-//----------------------------------------------------------------------
-// ThreadTest1
-// 	Set up a ping-pong between two threads, by forking a thread 
-//	to call SimpleThread, and then calling SimpleThread ourselves.
-//----------------------------------------------------------------------
-
-void
-ThreadTest1()
-{
-    DEBUG('t', "Entering ThreadTest1\n");
-
-    Thread *t = new Thread("forked thread");
-
-    t->Fork(SimpleThread, (void*)1);
-    SimpleThread(0);
-}
-//----------------------------------------------------------------------
-// ThreadTest_TS
-//  test threadstatus
-//----------------------------------------------------------------------
-
-void
-ThreadTest_TS()
-{
-    DEBUG('t', "Entering ThreadTest_TS\n");
-
-    Thread *t = new Thread("TS",0,0);
-
-    t->Fork(ThreadStatus,(void*)1);
-
-}
-//----------------------------------------------------------------------
-// ThreadTest_Prio
-//  test priority
-//----------------------------------------------------------------------
-
-void
-ThreadTest_Prio()
-{
-    DEBUG('t', "Entering ThreadTest_prio");
-
-    Thread *t0 = new Thread("test_prio0",1,0);
-    Thread *t1 = new Thread("test_prio1",1,1);
-    Thread *t2 = new Thread("test_prio2",1,2);
-    Thread *t3 = new Thread("test_prio3",1,3);
-
-    interrupt->Schedule(ForkThread,(int)t0,50,ConsoleWriteInt);
-    
-    t1->Fork(SimpleThread_prio,(void*)1);
-    t3->Fork(SimpleThread_prio,(void*)1);
-    t2->Fork(SimpleThread_prio,(void*)1);
-
-}
-
-void
-ThreadTest_multiqueue()
-{
+void ThreadTest_multiqueue(){
     DEBUG('t', "Entering ThreadTest_multiqueue");
-
+    Thread *t0 = new Thread("test_prio0",1,0);
     Thread *t1 = new Thread("test_prio1",1,0);
     Thread *t2 = new Thread("test_prio2",1,0);
-    Thread *t3 = new Thread("test_prio3",1,0);
 
-    t1->Fork(SimpleThread_mq,(void*)5);
-    t2->Fork(SimpleThread_mq,(void*)10);
-    t3->Fork(SimpleThread_mq,(void*)20);
-
+    t0->Fork(SimpleThread_mq,(void*)5);
+    t1->Fork(SimpleThread_mq,(void*)10);
+    t2->Fork(SimpleThread_mq,(void*)13);
 }
 
 //----------------------------------------------------------------------

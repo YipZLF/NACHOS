@@ -65,7 +65,7 @@ class Semaphore {
 
 class Lock {
   public:
-    Lock(char* debugName);  		// initialize lock to be FREE
+    Lock(char* debugName, int initialValue=1);// initialize lock to be FREE
     ~Lock();				// deallocate lock
     char* getName() { return name; }	// debugging assist
 
@@ -79,7 +79,8 @@ class Lock {
 
   private:
     char* name;				// for debugging
-    // plus some other stuff you'll need to define
+    Thread * lock_thread;
+    Semaphore lock_sem;
 };
 
 // The following class defines a "condition variable".  A condition

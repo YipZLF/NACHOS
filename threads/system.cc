@@ -2,7 +2,7 @@
  * @Description: In User Settings Edit
  * @Author: your name
  * @Date: 2019-09-11 23:49:35
- * @LastEditTime: 2019-10-02 14:15:47
+ * @LastEditTime: 2019-10-09 15:15:28
  * @LastEditors: Please set LastEditors
  */
 // system.cc 
@@ -55,7 +55,7 @@ extern void Cleanup();
 //	set up to interrupt the CPU periodically (once every TimerTicks).
 //	This routine is called each time there is a timer interrupt,
 //	with interrupts disabled.
-//
+//  如果还有线程在执行就让其下CPU
 //	Note that instead of calling Yield() directly (which would
 //	suspend the interrupt handler, not the interrupted thread
 //	which is what we wanted to context switch), we set a flag
