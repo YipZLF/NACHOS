@@ -80,7 +80,7 @@ class Lock {
   private:
     char* name;				// for debugging
     Thread * lock_thread;
-    Semaphore lock_sem;
+    Semaphore * lock_sem;
 };
 
 // The following class defines a "condition variable".  A condition
@@ -117,7 +117,7 @@ class Lock {
 
 class Condition {
   public:
-    Condition(char* debugName);		// initialize condition to 
+    Condition(char* debugName,Lock * _condition_lock = NULL);		// initialize condition to 
 					// "no one waiting"
     ~Condition();			// deallocate the condition
     char* getName() { return (name); }
@@ -132,6 +132,7 @@ class Condition {
 
   private:
     char* name;
-    // plus some other stuff you'll need to define
+    Lock* condition_lock;
+    List* condition_queue;
 };
 #endif // SYNCH_H

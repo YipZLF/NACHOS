@@ -117,25 +117,87 @@ Lock:
         }
 
 */
-Lock::Lock(char* debugName,int initialValue):lock_sem(debugName,initialValue),lock_thread(NULL) {}
-Lock::~Lock() {}
+Lock::Lock(char* debugName,int initialValue):lock_thread(NULL) {
+    name = debugName;
+    lock_sem = new Semaphore(debugName,initialValue);
+}
+Lock::~Lock() {
+    delete lock_sem;
+}
 void Lock::Acquire() {
     IntStatus oldLevel = interrupt->SetLevel(IntOff);
-    lock_sem.P();
+    lock_sem->P();
     lock_thread = currentThread;
     (void) interrupt->SetLevel(oldLevel);
 }
 void Lock::Release() {
     IntStatus oldLevel = interrupt->SetLevel(IntOff);
-    ASSERT(lock_thread == currentThread)
-    lock_sem.V();
+    ASSERT(lock_thread == currentThread);
+    lock_sem->V();
     lock_thread = NULL;
     (void) interrupt->SetLevel(oldLevel);
 }
 bool Lock::isHeldByCurrentThread(){return (lock_thread==currentThread);}
 
-Condition::Condition(char* debugName) { }
-Condition::~Condition() { }
-void Condition::Wait(Lock* conditionLock) { ASSERT(FALSE); }
-void Condition::Signal(Lock* conditionLock) { }
-void Condition::Broadcast(Lock* conditionLock) { }
+
+/*
+Condition:
+    维护一个信号量c，初始值为1，队列为空。lock初始值为Free
+    wait(lock):
+        *turn off interrupt;
+        lock.release();
+        queue.append(currentThread);
+        currentThread.Sleep();
+        lock.acquire();
+        *turn on interrupt;
+    Signal(lock):
+        
+        *turn off interrupt;
+        ASSERT(lock.isHeldByCurrentThread());
+
+        *turn on interrupt;
+
+*/
+Condition::Condition(char* debugName,Lock * _condition_lock) {
+    name = debugName;
+    if(_condition_lock==NULL)
+        condition_lock = new Lock(debugName,1);
+    else
+        condition_lock = _condition_lock;
+    condition_queue = new List;        
+}
+Condition::~Condition() {
+    delete condition_lock;
+    delete condition_queue;
+}
+void Condition::Wait(Lock* conditionLock) {
+    IntStatus oldLevel = interrupt->SetLevel(IntOff);
+    ASSERT(condition_lock==conditionLock);
+    condition_lock->Release();
+    condition_queue->Append(currentThread);
+    currentThread->Sleep();
+    condition_lock->Acquire();
+    (void) interrupt->SetLevel(oldLevel);
+}
+void Condition::Signal(Lock* conditionLock) {
+    IntStatus oldLevel = interrupt->SetLevel(IntOff);
+    ASSERT(condition_lock==conditionLock);
+    ASSERT(condition_lock->isHeldByCurrentThread());
+    Thread *next_thread = NULL;
+    if(!condition_queue->IsEmpty()){
+        next_thread = (Thread*) condition_queue->Remove();
+        scheduler->ReadyToRun(next_thread);
+    }
+    (void) interrupt->SetLevel(oldLevel);
+}
+void Condition::Broadcast(Lock* conditionLock) {
+    IntStatus oldLevel = interrupt->SetLevel(IntOff);
+    ASSERT(condition_lock==conditionLock);
+    ASSERT(condition_lock->isHeldByCurrentThread());
+    Thread *next_thread = NULL;
+    while(!condition_queue->IsEmpty()){
+        next_thread = (Thread*) condition_queue->Remove();
+        scheduler->ReadyToRun(next_thread);
+    }
+    (void) interrupt->SetLevel(oldLevel);
+}
