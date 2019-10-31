@@ -158,31 +158,23 @@ Condition:
         *turn on interrupt;
 
 */
-Condition::Condition(char* debugName,Lock * _condition_lock) {
+Condition::Condition(char* debugName) {
     name = debugName;
-    if(_condition_lock==NULL)
-        condition_lock = new Lock(debugName,1);
-    else
-        condition_lock = _condition_lock;
     condition_queue = new List;        
 }
 Condition::~Condition() {
-    delete condition_lock;
     delete condition_queue;
 }
 void Condition::Wait(Lock* conditionLock) {
     IntStatus oldLevel = interrupt->SetLevel(IntOff);
-    ASSERT(condition_lock==conditionLock);
-    condition_lock->Release();
+    conditionLock->Release();
     condition_queue->Append(currentThread);
     currentThread->Sleep();
-    condition_lock->Acquire();
+    conditionLock->Acquire();
     (void) interrupt->SetLevel(oldLevel);
 }
 void Condition::Signal(Lock* conditionLock) {
     IntStatus oldLevel = interrupt->SetLevel(IntOff);
-    ASSERT(condition_lock==conditionLock);
-    ASSERT(condition_lock->isHeldByCurrentThread());
     Thread *next_thread = NULL;
     if(!condition_queue->IsEmpty()){
         next_thread = (Thread*) condition_queue->Remove();
@@ -192,8 +184,6 @@ void Condition::Signal(Lock* conditionLock) {
 }
 void Condition::Broadcast(Lock* conditionLock) {
     IntStatus oldLevel = interrupt->SetLevel(IntOff);
-    ASSERT(condition_lock==conditionLock);
-    ASSERT(condition_lock->isHeldByCurrentThread());
     Thread *next_thread = NULL;
     while(!condition_queue->IsEmpty()){
         next_thread = (Thread*) condition_queue->Remove();

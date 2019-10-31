@@ -21,7 +21,7 @@
 #include "elevatortest.h"
 
 // testnum is set in main.cc
-int testnum = 1;
+int testnum;
 
 
 //----------------------------------------------------------------------
@@ -150,6 +150,138 @@ void ThreadTest_multiqueue(){
     t2->Fork(SimpleThread_mq,(void*)13);
 }
 
+
+//----------------------------------------------------------------------
+// SyncTest
+// 	Producer-consumer problem.
+//  NOTICE!! There is a problem that if non-deprivative scheduler is used,
+//           there might be starving problem. WATCHDOG is needed. Or periodically 
+//           yielding the current thread to change the order of ReadyToRun queue.
+//----------------------------------------------------------------------
+#define SYNC_BUFFER_SIZE 3
+Lock mutex("mutex");
+Condition empty("empty"),full("full");
+int buffer = 0;
+void Producer(int arg){
+    while(true){
+        interrupt->OneTick();
+        mutex.Acquire();
+        while(buffer == SYNC_BUFFER_SIZE){
+            DEBUG('s',"Producer %d waits for empty. Now buffersize: %d\n",arg,buffer);
+            empty.Wait(&mutex);
+        }
+        DEBUG('s',"Producer %d inserted data. Now buffersize: %d\n",arg,buffer);
+        buffer += 1;
+        DEBUG('s',"Producer %d signal full. Now buffersize: %d\n",arg,buffer);
+        full.Signal(&mutex);
+        mutex.Release();
+    }
+}
+void Consumer(int arg){
+    while(true){
+        interrupt->OneTick();
+        mutex.Acquire();
+        while(buffer == 0){
+            DEBUG('s',"Consumer %d waits for full. Now buffersize: %d\n",arg,buffer);
+            full.Wait(&mutex);
+        }
+        DEBUG('s',"Consumer %d consumers data. Now buffersize: %d\n",arg,buffer);
+        buffer -= 1;
+        DEBUG('s',"Consumer %d signal empty. Now buffersize: %d\n",arg,buffer);
+        empty.Signal(&mutex);
+        mutex.Release();
+    }
+}
+static void
+SyncTimerInterruptHandler(int dummy)
+{
+    DEBUG('s',"----------------Tick! Timer Interrupt!-----------------\n");
+    //printf("----------------Tick! Timer Interrupt!-----------------\n");
+    
+    if (interrupt->getStatus() != IdleMode)
+	    interrupt->YieldOnReturn();
+}
+void
+SimpleThread_oneTick(int which)
+{
+    int num;
+    
+    for (num = 0; num < 50; num++) {
+	    printf("*** thread %s looped %d times\n", currentThread->getName(), num);
+        interrupt->OneTick();
+    }
+}
+void Producer_consumer_test(){
+    timer = new Timer(SyncTimerInterruptHandler, 0, false);
+    Thread *pro1 = new Thread("producer 1",1);
+    Thread *pro2 = new Thread("producer 2",1);
+    Thread *con1 = new Thread("consumer 1",1);
+    Thread *con2 = new Thread("consumer 2",1);
+
+    pro1->Fork(Producer,(void*)1);
+    pro2->Fork(Producer,(void*)2);
+    con1->Fork(Consumer,(void*)1);
+    con2->Fork(Consumer,(void*)2);
+}
+
+//----------------------------------------------------------------------
+// SyncTest
+// 	Reader-writer problem.
+//  NOTICE!! There is a problem that if non-deprivative scheduler is used,
+//           there might be starving problem. WATCHDOG is needed. Or periodically 
+//           yielding the current thread to change the order of ReadyToRun queue.
+// QUESTION: READER 2 seems to starve
+//----------------------------------------------------------------------
+
+Semaphore rc_sem("rc_sem",1),write("write",1);
+int rc = 0;
+void Writer(int arg){
+        DEBUG('s',"Writer %d. Now reader_count: %d\n",arg,rc);
+    while(true){
+        interrupt->OneTick();
+
+        write.P();
+        DEBUG('s',"Writer %d writes. Now reader_count: %d\n",arg,rc);
+        
+        write.V();
+    }
+}
+void Reader(int arg){
+        DEBUG('s',"Reader %d. Now rc: %d\n",arg,rc);
+    while(true){
+        interrupt->OneTick();
+        
+        rc_sem.P();
+        rc+=1;
+        if(rc == 1) {
+            write.P();
+            DEBUG('s',"Reader %d enters\n",arg);
+        }
+        rc_sem.V();
+        
+        DEBUG('s',"Reader %d reads. Now reader_count: %d\n",arg,rc);
+        
+        rc_sem.P();
+        rc-=1;
+        DEBUG('s',"Reader %d leaves\n",arg);
+        if(rc == 0) write.V();
+        rc_sem.V();
+    }
+}
+
+
+void Reader_writer_test(){
+    timer = new Timer(SyncTimerInterruptHandler, 0, true);
+    Thread *wr1 = new Thread("writer 1",1);
+    Thread *wr2 = new Thread("writer 2",1);
+    Thread *re1 = new Thread("reader 1",1);
+    Thread *re2 = new Thread("reader 2",1);
+
+    wr1->Fork(Writer,(void*)1);
+    wr2->Fork(Writer,(void*)2);
+    re1->Fork(Reader,(void*)1);
+    re2->Fork(Reader,(void*)2);
+}
 //----------------------------------------------------------------------
 // ThreadTest
 // 	Invoke a test routine.
@@ -167,6 +299,10 @@ ThreadTest()
             ThreadTest_Prio(); break;
         case 4:
             ThreadTest_multiqueue(); break;
+        case 5:
+            Producer_consumer_test(); break;
+        case 6:
+            Reader_writer_test(); break;
         default:
             printf("No test specified.\n"); break;
     }

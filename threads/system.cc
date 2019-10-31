@@ -69,6 +69,7 @@ extern void Cleanup();
 static void
 TimerInterruptHandler(int dummy)
 {
+    DEBUG('t',"----------------Tick! Timer Interrupt!-----------------\n");
     if (interrupt->getStatus() != IdleMode)
 	interrupt->YieldOnReturn();
 }

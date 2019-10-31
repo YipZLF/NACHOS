@@ -117,7 +117,7 @@ class Lock {
 
 class Condition {
   public:
-    Condition(char* debugName,Lock * _condition_lock = NULL);		// initialize condition to 
+    Condition(char* debugName);		// initialize condition to 
 					// "no one waiting"
     ~Condition();			// deallocate the condition
     char* getName() { return (name); }
@@ -132,7 +132,6 @@ class Condition {
 
   private:
     char* name;
-    Lock* condition_lock;
     List* condition_queue;
 };
 #endif // SYNCH_H
