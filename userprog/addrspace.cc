@@ -181,6 +181,7 @@ void AddrSpace::SaveState()
 
 void AddrSpace::RestoreState() 
 {
+    DEBUG('m',"Initialized pageTable at %u, numPages=%d\n",(unsigned int)pageTable, numPages);
     machine->pageTable = pageTable;
     machine->pageTableSize = numPages;
 }

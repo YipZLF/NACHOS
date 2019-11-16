@@ -33,7 +33,7 @@
 					// the disk sector size, for
 					// simplicity
 
-#define NumPhysPages    32
+#define NumPhysPages    256
 #define MemorySize 	(NumPhysPages * PageSize)
 #define TLBSize		4		// if there is a TLB, make it small
 
@@ -185,12 +185,12 @@ class Machine {
 		void TLBExceptionHandler(int vpn);
 		
 
-		unsigned int* lru_counter;
 		#ifdef TLB_MISS_FIFO	
-		List fifo_list;
+		int oldest_tle;
 		#endif
 		#ifdef TLB_MISS_LRU
-
+		unsigned int* lru_counter; // counting how far it was when being used for the last time
+															// the large counter is, the farther it was used
 		#endif
   private:
     bool singleStep;		// drop back into the debugger after each

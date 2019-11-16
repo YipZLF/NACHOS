@@ -64,17 +64,25 @@ Machine::Machine(bool debug)
 #ifdef USE_TLB
     tlb = new TranslationEntry[TLBSize];
     for (i = 0; i < TLBSize; i++)
-	tlb[i].valid = FALSE;
+	    tlb[i].valid = FALSE;
     pageTable = NULL;
 #else	// use linear page table
     tlb = NULL;
     pageTable = NULL;
 #endif
 
-    lru_counter = new unsigned int[TLBSize]{0};
-#ifdef TLB_MISS_LRU
+#ifdef TLB_MISS_FIFO
+    oldest_tle=0;
 #endif
-
+#ifdef TLB_MISS_LRU
+    lru_counter = new unsigned int[TLBSize];
+    for(int i = 0 ;i < TLBSize;++i){
+        lru_counter[i] = __UINT32_MAX__-TLBSize-10;// in case of overflow, -10 for safety reason, 
+        // check out in the implementation of LRU. if one entry is not used, lru_counter will increase by 1
+        // initially we will fill in *TLBSize* entries into TLB, thus making lru_counter increase TLBSize
+        // if we initialize lru_counter by UINT32_MAX, it'd overflow.
+    }
+#endif
     singleStep = debug;
     CheckEndian();
 }
@@ -89,8 +97,8 @@ Machine::~Machine()
     delete [] mainMemory;
     if (tlb != NULL)
         delete [] tlb;
-    delete [] lru_counter;
 #ifdef TLB_MISS_LRU
+    delete [] lru_counter;
 #endif
 }
 
@@ -225,11 +233,12 @@ void Machine::WriteRegister(int num, int value)
 //----------------------------------------------------------------------
 
 void Machine::TLBExceptionHandler(int vpn){
-
 #ifdef TLB_MISS_FIFO
-    if(fifo_list.NumInList()<TLBSize){//find a new pos to fill in tlb
-        DEBUG('m',"TLB miss but TLB not full, ");
-        bool found = false;
+        DEBUG('m',"TLB miss \n");
+        tlb[oldest_tle] = pageTable[vpn];
+        oldest_tle = (oldest_tle+1) % TLBSize;
+        
+        /*bool found = false;
         for(int i = 0 ;i < TLBSize; ++i){
             if(!tlb[i].valid){
                 DEBUG('m',"so fill up TLB at position #%d\n", i);
@@ -237,20 +246,33 @@ void Machine::TLBExceptionHandler(int vpn){
                 fifo_list.Append((void*) &tlb[i]);
                 found = true;
             }
+            if(found) break;
         }
         ASSERT(found);
     }else{ // apply the FIFO policy
         DEBUG('m',"TLB miss and TLB full, ");
         TranslationEntry* swap_pos = (TranslationEntry * ) fifo_list.Remove();
-        DEBUG('m',"so removing entry mapping %d and change into the one mapping %d ",
+        DEBUG('m',"so removing entry mapping %d and change into the one mapping %d \n",
                 swap_pos->virtualPage,pageTable[vpn].virtualPage);
         *swap_pos = pageTable[vpn];
         fifo_list.Append((void*) &swap_pos);
-    }
+    }*/
 #endif
-    int min_counter = 0x7fffffff;
+#ifdef TLB_MISS_LRU
+
+    unsigned int max_counter = 0;
     int swap_pos = -1;
     for(int i = 0 ;i < TLBSize;++i){
+        if(!tlb[i].valid){
+            swap_pos = i;
+            break;
+        }else{
+            if(lru_counter[i]>=max_counter){
+                max_counter = lru_counter[i];
+                swap_pos = i;
+            }
+        }
+        /*
         if(!tlb[i].valid){
             DEBUG('m',"TLB miss but TLB not full, so fill up TLB at position #%d\n", i);
             swap_pos = i;
@@ -259,13 +281,11 @@ void Machine::TLBExceptionHandler(int vpn){
             if(lru_counter[i]<min_counter){
                 min_counter = lru_counter[i];
                 swap_pos = i;
-            }
-        }
+            }*/
     }
     ASSERT(swap_pos>=0);
     tlb[swap_pos] = pageTable[vpn];
-    lru_counter[swap_pos] = 1;
-#ifdef TLB_MISS_LRU
+    lru_counter[swap_pos] = 0;
 
 #endif
 }

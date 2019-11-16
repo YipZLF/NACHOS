@@ -45,9 +45,9 @@ extern Timer *timer;				// the hardware alarm clock
 #include "machine.h"
 extern Machine* machine;	// user program memory and registers
 
+#ifdef TLB_MISS_LRU
 static void
-TLBMissInterruptHandler(int dummy)
-{
+TLBMissInterruptHandler(int dummy){
     DEBUG('s',"----------------Tick! Timer Interrupt!-----------------\n");
     //printf("----------------Tick! Timer Interrupt!-----------------\n");
 
@@ -55,6 +55,9 @@ TLBMissInterruptHandler(int dummy)
         machine->lru_counter[i]++;
     }
 }
+
+#endif
+
 #endif
 
 #ifdef FILESYS_NEEDED 		// FILESYS or FILESYS_STUB 
