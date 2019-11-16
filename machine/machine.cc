@@ -71,6 +71,10 @@ Machine::Machine(bool debug)
     pageTable = NULL;
 #endif
 
+    lru_counter = new unsigned int[TLBSize]{0};
+#ifdef TLB_MISS_LRU
+#endif
+
     singleStep = debug;
     CheckEndian();
 }
@@ -85,6 +89,9 @@ Machine::~Machine()
     delete [] mainMemory;
     if (tlb != NULL)
         delete [] tlb;
+    delete [] lru_counter;
+#ifdef TLB_MISS_LRU
+#endif
 }
 
 //----------------------------------------------------------------------
@@ -211,4 +218,55 @@ void Machine::WriteRegister(int num, int value)
 	// DEBUG('m', "WriteRegister %d, value %d\n", num, value);
 	registers[num] = value;
     }
+
+//----------------------------------------------------------------------
+// Machine::SwapTLBEntry
+//   	Deal with TLB miss.
+//----------------------------------------------------------------------
+
+void Machine::TLBExceptionHandler(int vpn){
+
+#ifdef TLB_MISS_FIFO
+    if(fifo_list.NumInList()<TLBSize){//find a new pos to fill in tlb
+        DEBUG('m',"TLB miss but TLB not full, ");
+        bool found = false;
+        for(int i = 0 ;i < TLBSize; ++i){
+            if(!tlb[i].valid){
+                DEBUG('m',"so fill up TLB at position #%d\n", i);
+                tlb[i] = pageTable[vpn];
+                fifo_list.Append((void*) &tlb[i]);
+                found = true;
+            }
+        }
+        ASSERT(found);
+    }else{ // apply the FIFO policy
+        DEBUG('m',"TLB miss and TLB full, ");
+        TranslationEntry* swap_pos = (TranslationEntry * ) fifo_list.Remove();
+        DEBUG('m',"so removing entry mapping %d and change into the one mapping %d ",
+                swap_pos->virtualPage,pageTable[vpn].virtualPage);
+        *swap_pos = pageTable[vpn];
+        fifo_list.Append((void*) &swap_pos);
+    }
+#endif
+    int min_counter = 0x7fffffff;
+    int swap_pos = -1;
+    for(int i = 0 ;i < TLBSize;++i){
+        if(!tlb[i].valid){
+            DEBUG('m',"TLB miss but TLB not full, so fill up TLB at position #%d\n", i);
+            swap_pos = i;
+            break;
+        }else{
+            if(lru_counter[i]<min_counter){
+                min_counter = lru_counter[i];
+                swap_pos = i;
+            }
+        }
+    }
+    ASSERT(swap_pos>=0);
+    tlb[swap_pos] = pageTable[vpn];
+    lru_counter[swap_pos] = 1;
+#ifdef TLB_MISS_LRU
+
+#endif
+}
 

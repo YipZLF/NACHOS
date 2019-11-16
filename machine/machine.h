@@ -25,6 +25,7 @@
 #include "utility.h"
 #include "translate.h"
 #include "disk.h"
+#include "list.h"
 
 // Definitions related to the size, and format of user memory
 
@@ -181,7 +182,16 @@ class Machine {
 
     TranslationEntry *pageTable;
     unsigned int pageTableSize;
+		void TLBExceptionHandler(int vpn);
+		
 
+		unsigned int* lru_counter;
+		#ifdef TLB_MISS_FIFO	
+		List fifo_list;
+		#endif
+		#ifdef TLB_MISS_LRU
+
+		#endif
   private:
     bool singleStep;		// drop back into the debugger after each
 				// simulated instruction
