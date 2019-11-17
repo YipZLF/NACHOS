@@ -60,8 +60,15 @@ ExceptionHandler(ExceptionType which)
                 interrupt->Halt(); break;
                 }
             case SC_Exit:{
-                DEBUG('k', "Exit from userprog. with %d \n",machine->ReadRegister(4));
-                interrupt->Halt(); break;
+                DEBUG('e', "Exit from userprog. with %d \n",machine->ReadRegister(4));
+                int pt_size = machine->pageTableSize;
+                for(int i = 0 ;i < pt_size;++i){
+                    int cnt = machine->pageTable[i].physicalPage * PageSize / BytesPerBit;
+                    MemoryBitmap->Clear(cnt);
+                    MemoryBitmap->Clear(cnt+1);
+                }
+                currentThread->Finish();
+                break;
             }
             default:{
                 printf("Unexpected user mode exception %d %d\n", which, type);break;

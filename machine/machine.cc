@@ -299,7 +299,13 @@ void Machine::TLBExceptionHandler(int vpn){
 }
 
 
-int Machine::AllocPhysPage(int vAddr,bool * alloc){
+int Machine::AllocPhysPage(int vpn,bool * alloc){
+    int ppn = vpn;
+    int idx = 0, offset = (MemoryBitmap->Test(0))?128:0;
+    /*for(offset = 0; offset<divRoundUp(MemorySize,BytesPerBit);++offset){
+        if(!MemoryBitmap->Test(offset)) break;
+    }*/
+    ppn = vpn+offset;
 	*alloc = true;
-	return vAddr;
+	return ppn;
 }

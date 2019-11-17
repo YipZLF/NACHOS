@@ -1,10 +1,4 @@
-/*
- * @Description: In User Settings Edit
- * @Author: your name
- * @Date: 2019-09-11 23:49:35
- * @LastEditTime: 2019-10-02 18:49:59
- * @LastEditors: Please set LastEditors
- */
+
 // threadtest.cc 
 //	Simple test case for the threads assignment.
 //

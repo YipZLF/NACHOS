@@ -89,21 +89,21 @@ AddrSpace::AddrSpace(OpenFile *executable)
     pageTable = new TranslationEntry[numPages];
     bool bAllocPhysPage = false;
     for (i = 0; i < numPages; i++) {
-	pageTable[i].virtualPage = i;	// for now, virtual page # = phys page #
-	pageTable[i].physicalPage = machine->AllocPhysPage(i,&bAllocPhysPage);
-	pageTable[i].valid = bAllocPhysPage;
-	pageTable[i].use = FALSE;
-	pageTable[i].dirty = FALSE;
-	pageTable[i].readOnly = FALSE;  // if the code segment was entirely on 
-					// a separate page, we could set its 
-					// pages to be read-only
+        pageTable[i].virtualPage = i;	// for now, virtual page # = phys page #
+        pageTable[i].physicalPage = machine->AllocPhysPage(i,&bAllocPhysPage);
+        pageTable[i].valid = bAllocPhysPage;
+        pageTable[i].use = FALSE;
+        pageTable[i].dirty = FALSE;
+        pageTable[i].readOnly = FALSE;  // if the code segment was entirely on 
+                        // a separate page, we could set its 
+                        // pages to be read-only
+        bzero(&machine->mainMemory[pageTable[i].physicalPage*PageSize], PageSize);
     }
     
 // zero out the entire address space, to zero the unitialized data segment 
 // and the stack segment
-    bzero(machine->mainMemory, size);
-    delete MemoryBitmap;
-    MemoryBitmap =  new BitMap(divRoundUp(MemorySize,BytesPerBit));
+
+//    bzero(machine->mainMemory, size);
     RestoreState();
 // then, copy in the code and data segments into memory
     if (noffH.code.size > 0) {
@@ -114,7 +114,7 @@ AddrSpace::AddrSpace(OpenFile *executable)
             DEBUG('m',"exception type:%d\n",machine->Translate(noffH.code.virtualAddr+i,&into,1,false));    
             MemoryBitmap->Mark( into >> 6 );//2^6 = 64= BytesPerBit;
             executable->ReadAt(&(machine->mainMemory[into]), 1, noffH.code.inFileAddr+i);
-            DEBUG('m',"VAddr:%d PAddr:%d fileLocation:%d\n",noffH.code.virtualAddr+i,into,noffH.code.inFileAddr+i);    
+            //DEBUG('m',"VAddr:%d PAddr:%d fileLocation:%d\n",noffH.code.virtualAddr+i,into,noffH.code.inFileAddr+i);    
             
         }
         
@@ -127,7 +127,7 @@ AddrSpace::AddrSpace(OpenFile *executable)
             machine->Translate(noffH.initData.virtualAddr+i,&into,1,false);
             MemoryBitmap->Mark( into >> 6 );//2^6 = 64= BytesPerBit;
             executable->ReadAt(&(machine->mainMemory[into]),1, noffH.initData.inFileAddr+i);
-            DEBUG('m',"data seg :VAddr:%d PAddr:%d fileLocation:%d\n",noffH.initData.virtualAddr+i,into,noffH.initData.inFileAddr+i);    
+            //DEBUG('m',"data seg :VAddr:%d PAddr:%d fileLocation:%d\n",noffH.initData.virtualAddr+i,into,noffH.initData.inFileAddr+i);    
             
         }
         

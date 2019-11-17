@@ -92,7 +92,7 @@ Initialize(int argc, char **argv)
     bool randomYield = FALSE;
 
 #ifdef USER_PROGRAM
-    bool debugUserProg = true;	// single step user program
+    bool debugUserProg = FALSE;	// single step user program
 #endif
 #ifdef FILESYS_NEEDED
     bool format = FALSE;	// format disk
@@ -143,8 +143,9 @@ Initialize(int argc, char **argv)
     stats = new Statistics();			// collect statistics
     interrupt = new Interrupt;			// start up interrupt handling
     scheduler = new Scheduler();		// initialize the ready queue
-    if (randomYield)				// start the timer (if needed)
-	timer = new Timer(TimerInterruptHandler, 0, randomYield);
+    //if (randomYield)				// start the timer (if needed)
+	//timer = new Timer(TimerInterruptHandler, 0, false);//randomYield);
+
 
     threadToBeDestroyed = NULL;
 

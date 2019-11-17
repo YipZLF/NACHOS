@@ -70,6 +70,7 @@ extern void ThreadTest(void), Copy(char *unixFile, char *nachosFile);
 extern void Print(char *file), PerformanceTest(void);
 extern void StartProcess(char *file), ConsoleTest(char *in, char *out);
 extern void MailTest(int networkID);
+extern void UserProgInterruptHandler(int dummy);
 
 
 //----------------------------------------------------------------------
@@ -117,8 +118,9 @@ main(int argc, char **argv)
         if (!strcmp(*argv, "-z"))               // print copyright
             printf (copyright);
 #ifdef USER_PROGRAM
-        if (!strcmp(*argv, "-x")) {        	// run a user program
-	    	ASSERT(argc > 1);
+    	if (!strcmp(*argv, "-x")) {        	// run a user program
+	    	timer = new Timer(UserProgInterruptHandler, 0, false);
+			ASSERT(argc > 1);
             StartProcess(*(argv + 1));
             argCount = 2;
         } else if (!strcmp(*argv, "-c")) {      // test the console
@@ -134,7 +136,7 @@ main(int argc, char **argv)
 					// for console input
 	}
 #endif // USER_PROGRAM
-#ifdef FILESYS
+#ifdef FILE_SYS
 	if (!strcmp(*argv, "-cp")) { 		// copy from UNIX to Nachos
 	    ASSERT(argc > 2);
 	    Copy(*(argv + 1), *(argv + 2));

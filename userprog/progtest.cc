@@ -14,6 +14,8 @@
 #include "addrspace.h"
 #include "synch.h"
 
+
+
 //----------------------------------------------------------------------
 // StartProcess
 // 	Run a user program.  Open the executable, load it into
@@ -82,3 +84,23 @@ ConsoleTest (char *in, char *out)
 	if (ch == 'q') return;  // if q, quit
     }
 }
+void user_prog_test_exec(int arg){
+	char file[30] = "./test/sort"; 
+    DEBUG('m',"Start running sort program.");
+    StartProcess(file);
+}
+bool start = false;
+
+static Thread* user_prog_test= new Thread("user_prog_test:sort",0,0);
+void
+UserProgInterruptHandler(int dummy)
+{
+    DEBUG('m',"----------------Tick! Timer Interrupt!-----------------\n");
+    if(!start){
+        user_prog_test->Fork(user_prog_test_exec,0);
+		start = true;
+    }
+    if (interrupt->getStatus() != IdleMode)
+	    interrupt->YieldOnReturn();
+}
+

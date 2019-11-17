@@ -265,6 +265,6 @@ Machine::Translate(int virtAddr, int* physAddr, int size, bool writing)
 		entry->dirty = TRUE;
     *physAddr = pageFrame * PageSize + offset;
     ASSERT((*physAddr >= 0) && ((*physAddr + size) <= MemorySize));
-    DEBUG('m', "phys addr = 0x%x\n", *physAddr);
+   // DEBUG('m', "phys addr = 0x%x\n", *physAddr);
     return NoException;
 }
