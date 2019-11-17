@@ -26,6 +26,8 @@
 #include "translate.h"
 #include "disk.h"
 #include "list.h"
+#include "bitmap.h"
+
 
 // Definitions related to the size, and format of user memory
 
@@ -36,6 +38,13 @@
 #define NumPhysPages    256
 #define MemorySize 	(NumPhysPages * PageSize)
 #define TLBSize		4		// if there is a TLB, make it small
+
+//-----------------------------
+// Global bitmap to manage mainMemory
+// 
+//-----------------------------
+#define BytesPerBit 64
+extern BitMap *MemoryBitmap;
 
 enum ExceptionType { NoException,           // Everything ok!
 		     SyscallException,      // A program executed a system call.
@@ -184,6 +193,9 @@ class Machine {
     unsigned int pageTableSize;
 		void TLBExceptionHandler(int vpn);
 		
+		int AllocPhysPage(int vAddr, bool * alloc); // allocate a physical page for the entry
+																		// return the # of page allocated and 
+																		//set alloc=true if it really is available
 
 		#ifdef TLB_MISS_FIFO	
 		int oldest_tle;

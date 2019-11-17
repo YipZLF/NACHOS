@@ -693,3 +693,4 @@ Mult(int a, int b, bool signedArith, int* hiPtr, int* loPtr)
     *hiPtr = (int) hi;
     *loPtr = (int) lo;
 }
+

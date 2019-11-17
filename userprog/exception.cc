@@ -60,7 +60,7 @@ ExceptionHandler(ExceptionType which)
                 interrupt->Halt(); break;
                 }
             case SC_Exit:{
-                DEBUG('a', "Exit from userprog.\n");
+                DEBUG('k', "Exit from userprog. with %d \n",machine->ReadRegister(4));
                 interrupt->Halt(); break;
             }
             default:{

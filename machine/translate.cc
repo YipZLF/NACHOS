@@ -221,8 +221,8 @@ Machine::Translate(int virtAddr, int* physAddr, int size, bool writing)
 					virtAddr, pageTableSize);
 				return AddressErrorException;
 			} else if (!pageTable[vpn].valid) {
-				DEBUG('a', "virtual page # %d too large for page table size %d!\n", 
-					virtAddr, pageTableSize);
+				DEBUG('a', "virtual page # %d not valid\n", 
+					virtAddr);
 				return PageFaultException;
 			}
 			entry = &pageTable[vpn];
@@ -265,6 +265,6 @@ Machine::Translate(int virtAddr, int* physAddr, int size, bool writing)
 		entry->dirty = TRUE;
     *physAddr = pageFrame * PageSize + offset;
     ASSERT((*physAddr >= 0) && ((*physAddr + size) <= MemorySize));
-    DEBUG('a', "phys addr = 0x%x\n", *physAddr);
+    DEBUG('m', "phys addr = 0x%x\n", *physAddr);
     return NoException;
 }
