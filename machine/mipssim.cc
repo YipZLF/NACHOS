@@ -264,7 +264,7 @@ Machine::OneInstruction(Instruction *instr)
 	break;
       	
       case OP_LUI:
-	DEBUG('m', "Executing: LUI r%d,%d\n", instr->rt, instr->extra);
+	DEBUG('a', "Executing: LUI r%d,%d\n", instr->rt, instr->extra);
 	registers[instr->rt] = instr->extra << 16;
 	break;
 	

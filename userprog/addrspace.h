@@ -36,6 +36,9 @@ class AddrSpace {
 					// for now!
     unsigned int numPages;		// Number of pages in the virtual 
 					// address space
+    #ifdef TMP_DISK
+    unsigned int myDiskStartAddr;
+    #endif
 };
 
 #endif // ADDRSPACE_H

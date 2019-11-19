@@ -34,8 +34,11 @@
 #define PageSize 	SectorSize 	// set the page size equal to
 					// the disk sector size, for
 					// simplicity
-
-#define NumPhysPages    256
+#ifdef TMP_DISK
+	#define NumPhysPages 32
+#else
+	#define NumPhysPages    256
+#endif
 #define MemorySize 	(NumPhysPages * PageSize)
 #define TLBSize		4		// if there is a TLB, make it small
 
@@ -45,6 +48,14 @@
 //-----------------------------
 #define BytesPerBit 64
 extern BitMap *MemoryBitmap;
+
+#ifdef TMP_DISK
+
+#define DiskSizePerThread 32<<9
+#define MaxUserProgCnt 4
+#define MyDiskSize (DiskSizePerThread * MaxUserProgCnt)
+	extern char myDisk[MyDiskSize];
+#endif
 
 enum ExceptionType { NoException,           // Everything ok!
 		     SyscallException,      // A program executed a system call.
@@ -165,6 +176,9 @@ class Machine {
 
     char *mainMemory;		// physical memory to store user program,
 				// code and data, while executing
+		int oldest_main_mem_page; // VMLab: apply fifo for main memory management
+		unsigned int* reverse_mapping_table;
+		int * phys_page_to_thread;
     int registers[NumTotalRegs]; // CPU registers, for executing user programs
 
 

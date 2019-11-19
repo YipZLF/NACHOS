@@ -21,7 +21,9 @@ static char* exceptionNames[] = { "no exception", "syscall",
 
 BitMap *MemoryBitmap = new BitMap(divRoundUp(MemorySize,BytesPerBit));
 
-
+#ifdef TMP_DISK
+	char myDisk[MyDiskSize];
+#endif
 //----------------------------------------------------------------------
 // CheckEndian
 // 	Check to be sure that the host really uses the format it says it 
@@ -87,6 +89,9 @@ Machine::Machine(bool debug)
         // if we initialize lru_counter by UINT32_MAX, it'd overflow.
     }
 #endif
+    oldest_main_mem_page = 0;
+    reverse_mapping_table = new unsigned int [NumPhysPages]{0};
+    phys_page_to_thread = new int [NumPhysPages]{0};
     singleStep = debug;
     CheckEndian();
 }
@@ -104,6 +109,8 @@ Machine::~Machine()
 #ifdef TLB_MISS_LRU
     delete [] lru_counter;
 #endif
+    delete []reverse_mapping_table;
+    delete []phys_page_to_thread;
 }
 
 //----------------------------------------------------------------------

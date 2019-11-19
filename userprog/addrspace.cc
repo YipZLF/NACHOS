@@ -62,6 +62,11 @@ SwapHeader (NoffHeader *noffH)
 
 AddrSpace::AddrSpace(OpenFile *executable)
 {
+    #ifdef TMP_DISK
+        int tid = currentThread->getTID();
+        myDiskStartAddr = tid * DiskSizePerThread;
+        bzero(myDisk, DiskSizePerThread);
+    #endif 
     NoffHeader noffH;
     unsigned int i, size;
 
@@ -78,10 +83,14 @@ AddrSpace::AddrSpace(OpenFile *executable)
     numPages = divRoundUp(size, PageSize);
     size = numPages * PageSize;
 
+    #ifdef TMP_DISK
+    ASSERT(numPages <= (DiskSizePerThread/PageSize));
+    #else
     ASSERT(numPages <= NumPhysPages);		// check we're not trying
 						// to run anything too big --
 						// at least until we have
 						// virtual memory
+    #endif
 
     DEBUG('a', "Initializing address space, num pages %d, size %d\n", 
 					numPages, size);
@@ -89,15 +98,21 @@ AddrSpace::AddrSpace(OpenFile *executable)
     pageTable = new TranslationEntry[numPages];
     bool bAllocPhysPage = false;
     for (i = 0; i < numPages; i++) {
+        #ifdef TMP_DISK
+        pageTable[i].virtualPage = i;	// for now, virtual page # = phys page #
+        pageTable[i].physicalPage = -1;
+        pageTable[i].valid = FALSE;
+        #else
         pageTable[i].virtualPage = i;	// for now, virtual page # = phys page #
         pageTable[i].physicalPage = machine->AllocPhysPage(i,&bAllocPhysPage);
         pageTable[i].valid = bAllocPhysPage;
+        bzero(&machine->mainMemory[pageTable[i].physicalPage*PageSize], PageSize);
+        #endif
         pageTable[i].use = FALSE;
         pageTable[i].dirty = FALSE;
         pageTable[i].readOnly = FALSE;  // if the code segment was entirely on 
                         // a separate page, we could set its 
                         // pages to be read-only
-        bzero(&machine->mainMemory[pageTable[i].physicalPage*PageSize], PageSize);
     }
     
 // zero out the entire address space, to zero the unitialized data segment 
@@ -109,19 +124,33 @@ AddrSpace::AddrSpace(OpenFile *executable)
     if (noffH.code.size > 0) {
         DEBUG('a', "Initializing code segment, at 0x%x, size %d\n", 
 			noffH.code.virtualAddr, noffH.code.size);
+
+        #ifdef TMP_DISK
+        DEBUG('m', "(TMP_DISK)Reading code segment into myDisk, at 0x%x, size %d\n", 
+			noffH.code.virtualAddr, noffH.code.size);
+        executable->ReadAt(myDisk + myDiskStartAddr + noffH.code.virtualAddr, 
+                            noffH.code.size, noffH.code.inFileAddr);
+        #else
         int into= 0;
         for(int i = 0 ;i < noffH.code.size; ++i){
             DEBUG('m',"exception type:%d\n",machine->Translate(noffH.code.virtualAddr+i,&into,1,false));    
             MemoryBitmap->Mark( into >> 6 );//2^6 = 64= BytesPerBit;
             executable->ReadAt(&(machine->mainMemory[into]), 1, noffH.code.inFileAddr+i);
             //DEBUG('m',"VAddr:%d PAddr:%d fileLocation:%d\n",noffH.code.virtualAddr+i,into,noffH.code.inFileAddr+i);    
-            
         }
-        
+        #endif
+
     }
     if (noffH.initData.size > 0) {
         DEBUG('a', "Initializing data segment, at 0x%x, size %d\n", 
 			noffH.initData.virtualAddr, noffH.initData.size);
+
+        #ifdef TMP_DISK
+        DEBUG('m', "(TMP_DISK)Reading data segment into myDisk, at 0x%x, size %d\n", 
+			noffH.initData.virtualAddr, noffH.initData.size);
+        executable->ReadAt(myDisk + myDiskStartAddr + noffH.initData.virtualAddr,
+                            noffH.initData.size, noffH.initData.inFileAddr);
+        #else
         int into= 0;
         for(int i = 0 ;i <  noffH.initData.size; ++i){
             machine->Translate(noffH.initData.virtualAddr+i,&into,1,false);
@@ -130,7 +159,7 @@ AddrSpace::AddrSpace(OpenFile *executable)
             //DEBUG('m',"data seg :VAddr:%d PAddr:%d fileLocation:%d\n",noffH.initData.virtualAddr+i,into,noffH.initData.inFileAddr+i);    
             
         }
-        
+        #endif
     }
 
 }

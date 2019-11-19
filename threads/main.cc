@@ -24,6 +24,10 @@
 //              -z
 //
 //    -d causes certain debugging messages to be printed (cf. utility.h)
+// 		(DEBUG FLAGS:
+//			t: thread, schedule relative
+//			m: memory manage relative
+//			)
 //    -rs causes Yield to occur at random (but repeatable) spots
 //    -z prints the copyright message
 //
@@ -136,7 +140,7 @@ main(int argc, char **argv)
 					// for console input
 	}
 #endif // USER_PROGRAM
-#ifdef FILE_SYS
+#ifdef FILESYS
 	if (!strcmp(*argv, "-cp")) { 		// copy from UNIX to Nachos
 	    ASSERT(argc > 2);
 	    Copy(*(argv + 1), *(argv + 2));

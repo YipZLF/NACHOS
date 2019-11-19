@@ -24,6 +24,7 @@
 #include "copyright.h"
 #include "system.h"
 #include "syscall.h"
+#include<string.h>
 
 //----------------------------------------------------------------------
 // ExceptionHandler
@@ -47,6 +48,13 @@
 //	"which" is the kind of exception.  The list of possible exceptions 
 //	are in machine.h.
 //----------------------------------------------------------------------
+
+void PageFaultDiskIntHandler(int thread_ptr){
+    Thread* thread_to_wake = (Thread*)thread_ptr;
+    DEBUG('m',"Incoming disk interrupt to wake up thread %d \"%s\"\n",
+            thread_to_wake->getTID(),thread_to_wake->getName());
+    scheduler->ReadyToRun( thread_to_wake);
+}
 
 void
 ExceptionHandler(ExceptionType which)
@@ -87,8 +95,38 @@ ExceptionHandler(ExceptionType which)
                 machine->TLBExceptionHandler(vpn);
             }
 		}
-        else{ // no tlb
-            ASSERT(FALSE);
+        else{ // no tlb, page fault
+            DEBUG('m',"INTO PAGE FAULT HANDLER!\n");
+            unsigned int bad_v_addr = machine->ReadRegister(BadVAddrReg);
+            unsigned int vpn = bad_v_addr / PageSize;
+            int ppn_to_swap = machine->oldest_main_mem_page;
+            int page_to_tid = machine->phys_page_to_thread[ppn_to_swap];
+            TranslationEntry* rev_map_tle = (TranslationEntry*)machine->reverse_mapping_table[ppn_to_swap];
+
+            DEBUG('m',"Decide to swap page #%d\n", ppn_to_swap);
+
+            if(rev_map_tle){// allocated
+                if(rev_map_tle->dirty){
+                    memcpy( & myDisk[page_to_tid * DiskSizePerThread + rev_map_tle->virtualPage * PageSize],
+                            & machine->mainMemory[ppn_to_swap * PageSize], PageSize); 
+                }
+                rev_map_tle->valid = FALSE;
+                DEBUG('m',"-- the old page is allocated to thread %d, DIRTY=%d\n",page_to_tid,rev_map_tle->dirty);
+            }
+            // not allocated
+            machine->reverse_mapping_table[ppn_to_swap] = (unsigned int)&machine->pageTable[vpn];
+            machine->phys_page_to_thread[ppn_to_swap] = currentThread->getTID();
+            machine->oldest_main_mem_page += 1;
+            machine->oldest_main_mem_page %= NumPhysPages;
+
+            DEBUG('m',"Now allocate phys page #%d to thread %d\n",ppn_to_swap,currentThread->getTID());
+
+            machine->pageTable[vpn].physicalPage = ppn_to_swap;
+
+            // For simulation purpose:
+            interrupt->Schedule(PageFaultDiskIntHandler,(int)currentThread,100,DiskInt);
+
+            currentThread->Sleep();
         }
     } else {
         printf("Unexpected user mode exception %d %d\n", which, type);
