@@ -117,7 +117,7 @@ Machine::ReadMem(int addr, int size, int *value)
       default: ASSERT(FALSE);
     }
     
-    DEBUG('a', "\tvalue read = %8.8x\n", *value);
+    DEBUG('a', "\t at phys addr: %8.8x, value read = %8.8x\n", physicalAddress,*value);
     return (TRUE);
 }
 
@@ -164,6 +164,7 @@ Machine::WriteMem(int addr, int size, int value)
 	
       default: ASSERT(FALSE);
     }
+    DEBUG('a', "\t at phys addr: %8.8x\n", physicalAddress);
     
     return TRUE;
 }
@@ -214,7 +215,6 @@ Machine::Translate(int virtAddr, int* physAddr, int size, bool writing)
 // from the virtual address
     vpn = (unsigned) virtAddr / PageSize;
     offset = (unsigned) virtAddr % PageSize;
-    
     if (tlb == NULL) {		// => page table => vpn is index into table
 			if (vpn >= pageTableSize) {
 				DEBUG('a', "virtual page # %d too large for page table size %d!\n", 
@@ -226,7 +226,11 @@ Machine::Translate(int virtAddr, int* physAddr, int size, bool writing)
 				return PageFaultException;
 			}
 			entry = &pageTable[vpn];
+
+			DEBUG('m',"TRANSLATION: Got entry from thread%d \"%s\", vpn:%d,ppn:%d\n",
+					currentThread->getTID(),currentThread->getName(),vpn,entry->physicalPage);
     }else{ // TLB is enabled
+			DEBUG('m',"TLB: look it up in TLB\n");
         for (entry = NULL, i = 0; i < TLBSize; i++)
     	    if (tlb[i].valid && (tlb[i].virtualPage == vpn)) {
 						entry = &tlb[i];			// FOUND!
@@ -264,7 +268,9 @@ Machine::Translate(int virtAddr, int* physAddr, int size, bool writing)
     if (writing)
 		entry->dirty = TRUE;
     *physAddr = pageFrame * PageSize + offset;
+		DEBUG('m',"OH MY GOD: pageFrame %d, PageSize:%d, offset:%d\n",pageFrame , PageSize , offset);
     ASSERT((*physAddr >= 0) && ((*physAddr + size) <= MemorySize));
    // DEBUG('m', "phys addr = 0x%x\n", *physAddr);
+	  
     return NoException;
 }

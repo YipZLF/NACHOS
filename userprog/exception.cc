@@ -70,12 +70,13 @@ ExceptionHandler(ExceptionType which)
                 }
             case SC_Exit:{
                 DEBUG('e', "Exit from userprog. with %d \n",machine->ReadRegister(4));
+                printf("Exit with %d\n",machine->ReadRegister(4));
                 int pt_size = machine->pageTableSize;
-                for(int i = 0 ;i < pt_size;++i){
+                /*for(int i = 0 ;i < pt_size;++i){
                     int cnt = machine->pageTable[i].physicalPage * PageSize / BytesPerBit;
                     MemoryBitmap->Clear(cnt);
                     MemoryBitmap->Clear(cnt+1);
-                }
+                }*/
                 currentThread->Finish();
                 break;
             }
@@ -125,12 +126,26 @@ ExceptionHandler(ExceptionType which)
             DEBUG('m',"Now allocate phys page #%d to thread %d\n",ppn_to_swap,currentThread->getTID());
 
             machine->pageTable[vpn].physicalPage = ppn_to_swap;
+            DEBUG('m',"PAGETABLE: now pageTable[%d] is %d\n",vpn,ppn_to_swap);
             machine->pageTable[vpn].valid = TRUE;
 
             // For simulation purpose:
             memcpy( & machine->mainMemory[ppn_to_swap * PageSize],
                     & myDisk[currentThread->getTID() * DiskSizePerThread + vpn * PageSize],
                     PageSize); 
+            DEBUG('m',"WRITE TO MAIN MEM: phys:%8.8x, disk addr:%8.8x\n",
+                    ppn_to_swap * PageSize,currentThread->getTID() * DiskSizePerThread + vpn * PageSize);
+            
+            /*
+            DEBUG('m',"**CHECK MEM CONTENT:\n");
+            for(int i = 0 ;i < PageSize;++i){
+                DEBUG('m',"* Mem: %8.8x: %2x \t Disk: %8.8x, %2x,(Host Addr:%x)\n",
+                        ppn_to_swap * PageSize+i,machine->mainMemory[ppn_to_swap * PageSize+i],
+                        currentThread->getTID() * DiskSizePerThread + vpn * PageSize + i,
+                        myDisk[currentThread->getTID() * DiskSizePerThread + vpn * PageSize+i],
+                        (int)&myDisk[currentThread->getTID() * DiskSizePerThread + vpn * PageSize+i]);
+            }
+            */
             interrupt->Schedule(PageFaultDiskIntHandler,(int)currentThread,150,DiskInt);
 
             currentThread->Sleep();

@@ -65,7 +65,7 @@ AddrSpace::AddrSpace(OpenFile *executable)
     #ifdef TMP_DISK
         int tid = currentThread->getTID();
         myDiskStartAddr = tid * DiskSizePerThread;
-        bzero(myDisk, DiskSizePerThread);
+        bzero(myDisk + myDiskStartAddr, DiskSizePerThread);
     #endif 
     NoffHeader noffH;
     unsigned int i, size;
@@ -132,17 +132,20 @@ AddrSpace::AddrSpace(OpenFile *executable)
 			noffH.code.virtualAddr, noffH.code.size);
         executable->ReadAt(myDisk + myDiskStartAddr + noffH.code.virtualAddr, 
                             noffH.code.size, noffH.code.inFileAddr);
+        /*
         char into= 0;
         for(int i = 0 ;i < noffH.code.size; ++i){
             //MemoryBitmap->Mark( into >> 6 );//2^6 = 64= BytesPerBit;
             executable->ReadAt(&into, 1, noffH.code.inFileAddr+i);
-            DEBUG('m',"FILE_CONTENT_DEBUG:VAddr:%d fileLocation:%d content: %2x\n",noffH.code.virtualAddr+i,noffH.code.inFileAddr+i,into);    
+            DEBUG('m',"FILE_CONTENT_DEBUG:VAddr:%d fileLocation:%d content: %2x\n",
+                noffH.code.virtualAddr+i,noffH.code.inFileAddr+i,into);    
         }
         for(int i = 0 ;i < noffH.code.size; ++i){
-            DEBUG('m',"DISK_CONTENT_DEBUG: DiskPhysAddr:%d VAddr:%d, content:%2x \n",
+            DEBUG('m',"DISK_CONTENT_DEBUG: DiskPhysAddr:%8.8x VAddr:%8.8x, content:%2x (Host addr: %x\n",
                     myDiskStartAddr + noffH.code.virtualAddr+i,noffH.code.virtualAddr+i,
-                    (int)myDisk[myDiskStartAddr + noffH.code.virtualAddr+i]);    
-        }
+                    (int)myDisk[myDiskStartAddr + noffH.code.virtualAddr+i],
+                    (int)&myDisk[myDiskStartAddr + noffH.code.virtualAddr+i]);    
+        }*/
         #else
         int into= 0;
         for(int i = 0 ;i < noffH.code.size; ++i){
@@ -228,7 +231,11 @@ AddrSpace::InitRegisters()
 //----------------------------------------------------------------------
 
 void AddrSpace::SaveState() 
-{}
+{
+    DEBUG('m',"Save pageTable\n");
+    machine->pageTable = NULL;
+    machine->pageTableSize = NULL;
+}
 
 //----------------------------------------------------------------------
 // AddrSpace::RestoreState
