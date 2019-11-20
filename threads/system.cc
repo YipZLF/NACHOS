@@ -154,6 +154,7 @@ Initialize(int argc, char **argv)
     // object to save its state. 
     currentThread = new Thread("main",0,0);		
     currentThread->setStatus(RUNNING);
+    currentThread->setTID();
 
     interrupt->Enable();
     CallOnUserAbort(Cleanup);			// if user hits ctl-C

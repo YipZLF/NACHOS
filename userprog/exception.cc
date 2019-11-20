@@ -53,14 +53,15 @@ void PageFaultDiskIntHandler(int thread_ptr){
     Thread* thread_to_wake = (Thread*)thread_ptr;
     DEBUG('m',"Incoming disk interrupt to wake up thread %d \"%s\"\n",
             thread_to_wake->getTID(),thread_to_wake->getName());
-    scheduler->ReadyToRun( thread_to_wake);
+    scheduler->ReadyToRun(thread_to_wake);
 }
 
 void
 ExceptionHandler(ExceptionType which)
 {
     int type = machine->ReadRegister(2);
-
+    IntStatus oldLevel = interrupt->SetLevel(IntOff);	// disable interrupts
+    
     if (which == SyscallException) {
         switch(type){
             case SC_Halt:{
@@ -109,6 +110,8 @@ ExceptionHandler(ExceptionType which)
                 if(rev_map_tle->dirty){
                     memcpy( & myDisk[page_to_tid * DiskSizePerThread + rev_map_tle->virtualPage * PageSize],
                             & machine->mainMemory[ppn_to_swap * PageSize], PageSize); 
+                    DEBUG('m',"-- DIRTY: the old page is dirty, write it back to myDisk at %u \n",
+                        page_to_tid * DiskSizePerThread + rev_map_tle->virtualPage * PageSize);
                 }
                 rev_map_tle->valid = FALSE;
                 DEBUG('m',"-- the old page is allocated to thread %d, DIRTY=%d\n",page_to_tid,rev_map_tle->dirty);
@@ -122,9 +125,13 @@ ExceptionHandler(ExceptionType which)
             DEBUG('m',"Now allocate phys page #%d to thread %d\n",ppn_to_swap,currentThread->getTID());
 
             machine->pageTable[vpn].physicalPage = ppn_to_swap;
+            machine->pageTable[vpn].valid = TRUE;
 
             // For simulation purpose:
-            interrupt->Schedule(PageFaultDiskIntHandler,(int)currentThread,100,DiskInt);
+            memcpy( & machine->mainMemory[ppn_to_swap * PageSize],
+                    & myDisk[currentThread->getTID() * DiskSizePerThread + vpn * PageSize],
+                    PageSize); 
+            interrupt->Schedule(PageFaultDiskIntHandler,(int)currentThread,150,DiskInt);
 
             currentThread->Sleep();
         }
@@ -132,4 +139,6 @@ ExceptionHandler(ExceptionType which)
         printf("Unexpected user mode exception %d %d\n", which, type);
         ASSERT(FALSE);
     }
+
+    (void) interrupt->SetLevel(oldLevel);	// re-enable interrupts
 }

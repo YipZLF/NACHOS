@@ -51,7 +51,7 @@ extern BitMap *MemoryBitmap;
 
 #ifdef TMP_DISK
 
-#define DiskSizePerThread 32<<9
+#define DiskSizePerThread (32<<9)
 #define MaxUserProgCnt 4
 #define MyDiskSize (DiskSizePerThread * MaxUserProgCnt)
 	extern char myDisk[MyDiskSize];

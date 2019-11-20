@@ -124,6 +124,8 @@ class Thread {
     void setUsedTicks(int new_used_ticks){used_ticks = new_used_ticks;}
     void setStartTime(int new_start_time){start_time = new_start_time;}
     void Print() { printf("%s, ", name); }
+    //the following function is used to deal with the special "main" thread
+    void setTID();
     
   private:
     // some of the private data for this class is listed above

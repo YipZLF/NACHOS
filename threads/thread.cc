@@ -356,3 +356,10 @@ Thread::RestoreUserState()
 }
 
 #endif
+
+void
+Thread::setTID(){
+    int new_tid = scheduler->AssignTID();
+    tid = new_tid;
+    tidmap_array[tid] = this;
+}
