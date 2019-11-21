@@ -95,7 +95,7 @@ static Thread* user_prog_test= new Thread("user_prog_test:sort",0,0);
 void
 UserProgInterruptHandler(int dummy)
 {
-    DEBUG('m',"----------------Tick! Timer Interrupt!-----------------\n");
+    DEBUG('m',"----------------Tick! Timer Interrupt at %d!-----------------\n",stats->totalTicks);
     if(!start){
         user_prog_test->Fork(user_prog_test_exec,0);
 		start = true;

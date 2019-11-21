@@ -217,18 +217,16 @@ Machine::Translate(int virtAddr, int* physAddr, int size, bool writing)
     offset = (unsigned) virtAddr % PageSize;
     if (tlb == NULL) {		// => page table => vpn is index into table
 			if (vpn >= pageTableSize) {
-				DEBUG('a', "virtual page # %d too large for page table size %d!\n", 
+				DEBUG('m', "Virtual page # %d too large for page table size %d!\n", 
 					virtAddr, pageTableSize);
 				return AddressErrorException;
 			} else if (!pageTable[vpn].valid) {
-				DEBUG('a', "Page Fault: virtual page # %d not valid\n", 
+				DEBUG('m', "Page Fault: Virtual page # %d not valid\n", 
 					virtAddr);
+				stats->numPageFaults++;
 				return PageFaultException;
 			}
 			entry = &pageTable[vpn];
-
-			DEBUG('m',"TRANSLATION: Got entry from thread%d \"%s\", vpn:%d,ppn:%d\n",
-					currentThread->getTID(),currentThread->getName(),vpn,entry->physicalPage);
     }else{ // TLB is enabled
 			DEBUG('m',"TLB: look it up in TLB\n");
         for (entry = NULL, i = 0; i < TLBSize; i++)
@@ -244,7 +242,7 @@ Machine::Translate(int virtAddr, int* physAddr, int size, bool writing)
 						break;
 	    		}
 				if (entry == NULL) {				// not found
-						DEBUG('a', "*** no valid TLB entry found for this virtual page!\n");
+						DEBUG('m', "!No valid TLB entry found for this virtual page!\n");
 						stats->numTLBMiss++;
 						return PageFaultException;		// really, this is a TLB fault,
 									// the page may be in memory,
@@ -268,7 +266,6 @@ Machine::Translate(int virtAddr, int* physAddr, int size, bool writing)
     if (writing)
 		entry->dirty = TRUE;
     *physAddr = pageFrame * PageSize + offset;
-		DEBUG('m',"OH MY GOD: pageFrame %d, PageSize:%d, offset:%d\n",pageFrame , PageSize , offset);
     ASSERT((*physAddr >= 0) && ((*physAddr + size) <= MemorySize));
    // DEBUG('m', "phys addr = 0x%x\n", *physAddr);
 	  

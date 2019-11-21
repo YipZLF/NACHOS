@@ -304,7 +304,40 @@ void Machine::TLBExceptionHandler(int vpn){
 
 #endif
 }
+void Machine::PageFaultHandler(){
+    DEBUG('m',"INTO PAGE FAULT HANDLER!\n");
+    unsigned int bad_v_addr = ReadRegister(BadVAddrReg);
+    unsigned int vpn = bad_v_addr / PageSize;
+    int ppn_to_swap = oldest_main_mem_page;
+    int page_to_tid = phys_page_to_thread[ppn_to_swap];
+    TranslationEntry* rev_map_tle = (TranslationEntry*)reverse_mapping_table[ppn_to_swap];
 
+    DEBUG('m',"Decide to swap page #%d\n", ppn_to_swap);
+
+    if(rev_map_tle){// allocated
+        if(rev_map_tle->dirty){
+            bcopy(& mainMemory[ppn_to_swap * PageSize],
+                  & myDisk[page_to_tid * DiskSizePerThread + rev_map_tle->virtualPage * PageSize],
+                  PageSize);
+        }
+        rev_map_tle->valid = FALSE;
+        DEBUG('m',"-- The old page is allocated to thread %d, DIRTY=%d\n",page_to_tid,rev_map_tle->dirty);
+    }
+    // not allocated
+    reverse_mapping_table[ppn_to_swap] = (unsigned int)&pageTable[vpn];
+    phys_page_to_thread[ppn_to_swap] = currentThread->getTID();
+    oldest_main_mem_page += 1;
+    oldest_main_mem_page %= NumPhysPages;
+
+    DEBUG('m',"Now allocate phys page #%d to thread %d\n",ppn_to_swap,currentThread->getTID());
+
+    pageTable[vpn].physicalPage = ppn_to_swap;
+    pageTable[vpn].valid = TRUE;
+
+    bcopy(& myDisk[currentThread->getTID()* DiskSizePerThread + vpn * PageSize],
+            & mainMemory[ppn_to_swap * PageSize], PageSize);
+
+}
 
 int Machine::AllocPhysPage(int vpn,bool * alloc){
     int ppn = vpn;

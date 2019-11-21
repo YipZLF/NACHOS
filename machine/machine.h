@@ -206,7 +206,7 @@ class Machine {
     TranslationEntry *pageTable;
     unsigned int pageTableSize;
 		void TLBExceptionHandler(int vpn);
-		
+		void PageFaultHandler();
 		int AllocPhysPage(int vAddr, bool * alloc); // allocate a physical page for the entry
 																		// return the # of page allocated and 
 																		//set alloc=true if it really is available

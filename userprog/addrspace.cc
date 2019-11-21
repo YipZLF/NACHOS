@@ -83,16 +83,16 @@ AddrSpace::AddrSpace(OpenFile *executable)
     numPages = divRoundUp(size, PageSize);
     size = numPages * PageSize;
 
-    #ifdef TMP_DISK
+#ifdef TMP_DISK
     int a = DiskSizePerThread, b= PageSize;
     int maxPagesCnt = DiskSizePerThread/PageSize;
     ASSERT(numPages <= (DiskSizePerThread/PageSize));
-    #else
+#else
     ASSERT(numPages <= NumPhysPages);		// check we're not trying
 						// to run anything too big --
 						// at least until we have
 						// virtual memory
-    #endif
+#endif
 
     DEBUG('a', "Initializing address space, num pages %d, size %d\n", 
 					numPages, size);

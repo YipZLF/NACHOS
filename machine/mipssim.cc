@@ -105,7 +105,6 @@ Machine::OneInstruction(Instruction *instr)
     if (!machine->ReadMem(registers[PCReg], 4, &raw))
 		return;			// exception occurred
     instr->value = raw;
-	DEBUG('m',"OneInstruction:: read raw code, %d, at %u\n",raw,registers[PCReg]);
     instr->Decode();
 /*
     if (DebugIsEnabled('m')) {
