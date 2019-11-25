@@ -226,7 +226,7 @@ void Producer_consumer_test(){
 //           yielding the current thread to change the order of ReadyToRun queue.
 // QUESTION: READER 2 seems to starve
 //----------------------------------------------------------------------
-
+/*
 Semaphore rc_sem("rc_sem",1),write("write",1);
 int rc = 0;
 void Writer(int arg){
@@ -277,7 +277,7 @@ void Reader_writer_test(){
     re2->Fork(Reader,(void*)2);
 }
 
-
+*/
 //---------------
 // User Program TLB miss lru
 //---------------
@@ -301,8 +301,8 @@ ThreadTest()
             ThreadTest_multiqueue(); break;
         case 5:
             Producer_consumer_test(); break;
-        case 6:
-            Reader_writer_test(); break;
+     //   case 6:
+     //       Reader_writer_test(); break;
         default:
             printf("No test specified.\n"); break;
     }

@@ -337,6 +337,7 @@ void Machine::PageFaultHandler(){
     bcopy(& myDisk[currentThread->getTID()* DiskSizePerThread + vpn * PageSize],
             & mainMemory[ppn_to_swap * PageSize], PageSize);
 
+
 }
 
 int Machine::AllocPhysPage(int vpn,bool * alloc){
