@@ -171,6 +171,54 @@ FileSystem::FileSystem(bool format)
 //	"initialSize" -- size of file to be created
 //----------------------------------------------------------------------
 
+OpenFile* FileSystem::findFilebyPath(char * name){
+    /* every path should start with '/' indicating it searches from the root directory 
+    if not ,the default behaviour is to start searching from root */
+
+    DEBUG('f',"Start trying to resolve path: %s\n",name);
+    int maxlen = 0,curpos = ( (name[0]=='/')?1:0 );
+    for(; name[maxlen];++maxlen);//get name length
+    
+    char cur_name[FileNameMaxLen];
+    Directory * cur_directory;    
+    cur_directory = new Directory(NumDirEntries);
+    cur_directory->FetchFrom(directoryFile);    
+    
+    while(curpos<=maxlen){
+        int i = curpos,name_length;
+        for(;i < maxlen; ++i){
+            if(name[i] = '/')
+                break;
+        }
+
+        name_length = i-curpos;
+        bzero(cur_name,sizeof(cur_name));
+        bcopy(&name[curpos],cur_name,name_length);
+
+        if(sector<0){
+            DEBUG('f',"Failed to find sector of %s\n",cur_name);
+            delete cur_directory;
+            return NULL;
+        }
+
+        DEBUG('f',"\t * cur_name:%s, len:%d,  sector:%d\t",
+                cur_name, name_length, sector);
+        
+        if(i==maxlen){
+            DEBUG('f','Found it! \n');
+            bcopy(cur_name,name,name_length);
+            delete cur_directory;
+            return openFile;    
+        }else{
+            DEBUG('f',"Keep on looking\n");
+            int sector = cur_directory->Find(cur_name);
+            OpenFile* openFile = new OpenFile(sector);
+            curpos = i+1;
+            cur_directory->FetchFrom(openFile);
+        }
+    }
+}
+
 bool
 FileSystem::Create(char *name, int initialSize)
 {

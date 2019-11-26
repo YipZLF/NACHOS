@@ -27,6 +27,10 @@
 #include "system.h"
 #include "filehdr.h"
 
+FileHeader::FileHeader(int cur_time, unsigned int _flag){
+    create_time = last_access_time = last_modified_time = cur_time;
+    flag = _flag;
+}
 //----------------------------------------------------------------------
 // FileHeader::Allocate
 // 	Initialize a fresh file header for a newly created file.
@@ -106,7 +110,41 @@ FileHeader::WriteBack(int sector)
 int
 FileHeader::ByteToSector(int offset)
 {
-    return(dataSectors[offset / SectorSize]);
+    int blockIndex = offset/SectorSize;
+    ASSERT(blockIndex>=0);
+    if(blockIndex < NumFirstLevelDirect){
+        DEBUG('f',"FileHeader::ByteToSector: using first level indexing. SectorNum:%d\n",dataSectors[blockIndex]);
+        return(dataSectors[blockIndex]);
+    }else{// using higher level of indexing
+        DEBUG('f',"FileHeader::ByteToSector: using higher level indexing - ");
+        blockIndex = blockIndex - NumFirstLevelDirect;
+        ASSERT(blockIndex>=0);
+        if( blockIndex < NumIndexDirect){//using secondary indexing
+            DEBUG('f'," 2-level index.\n");
+            SecondaryIndex * secondaryIndex;
+            synchDisk->ReadSector(SecondaryIndexSectors, (char *)secondaryIndex);
+            DEBUG('f'," \t* IndexSectorNum:%d, DataSectorNum:%d\n",
+                SecondaryIndexSectors,secondaryIndex->dataSectors[blockIndex]);
+            return(secondaryIndex->dataSectors[blockIndex]);
+        }else{//using third level indexing
+            DEBUG('f'," 3-level index.\n");
+            blockIndex = blockIndex - NumIndexDirect;
+            int blockIndex_1 = blockIndex / NumIndexDirect;
+            int blockIndex_2 = blockIndex % NumIndexDirect;
+            ASSERT(blockIndex>=0 && blockIndex_1>=0 && blockIndex_2>=0);
+
+            ThirdLevelIndex * thirdLevelIndex;
+            SecondaryIndex * secondaryIndex;
+            synchDisk->ReadSector(ThirdLevelIndexSectors, (char *)thirdLevelIndex);
+            synchDisk->ReadSector(thirdLevelIndex->SecondaryIndexSectors[blockIndex_1],
+                                    (char *)secondaryIndex);
+
+            DEBUG('f'," \t* 3-Index SectorNum:%d  2-IndexSectorNum:%d, DataSectorNum:%d\n",
+                ThirdLevelIndexSectors,thirdLevelIndex->SecondaryIndexSectors[blockIndex_1],
+                secondaryIndex->dataSectors[blockIndex]);
+            return(secondaryIndex->dataSectors[blockIndex_2]);
+        }
+    }
 }
 
 //----------------------------------------------------------------------
