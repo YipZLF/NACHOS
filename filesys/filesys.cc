@@ -171,23 +171,26 @@ FileSystem::FileSystem(bool format)
 //	"initialSize" -- size of file to be created
 //----------------------------------------------------------------------
 
-OpenFile* FileSystem::findFilebyPath(char * name){
+OpenFile* FileSystem::findFatherDirbyPath(char * name){
     /* every path should start with '/' indicating it searches from the root directory 
     if not ,the default behaviour is to start searching from root */
 
-    DEBUG('f',"Start trying to resolve path: %s\n",name);
     int maxlen = 0,curpos = ( (name[0]=='/')?1:0 );
     for(; name[maxlen];++maxlen);//get name length
     
+    DEBUG('f',"Start trying to resolve path: %s length:%d\n",name,maxlen);
+
     char cur_name[FileNameMaxLen];
     Directory * cur_directory;    
+    OpenFile* openFile = directoryFile;
+
     cur_directory = new Directory(NumDirEntries);
     cur_directory->FetchFrom(directoryFile);    
     
     while(curpos<=maxlen){
         int i = curpos,name_length;
         for(;i < maxlen; ++i){
-            if(name[i] = '/')
+            if(name[i] == '/')
                 break;
         }
 
@@ -195,26 +198,29 @@ OpenFile* FileSystem::findFilebyPath(char * name){
         bzero(cur_name,sizeof(cur_name));
         bcopy(&name[curpos],cur_name,name_length);
 
-        if(sector<0){
-            DEBUG('f',"Failed to find sector of %s\n",cur_name);
-            delete cur_directory;
-            return NULL;
-        }
+        
+        DEBUG('f',"\t * cur_name:%s, len:%d i:%d\t",
+                cur_name, name_length,i);
 
-        DEBUG('f',"\t * cur_name:%s, len:%d,  sector:%d\t",
-                cur_name, name_length, sector);
         
         if(i==maxlen){
-            DEBUG('f','Found it! \n');
-            bcopy(cur_name,name,name_length);
+            bcopy(cur_name,name,name_length+1);
+
+            DEBUG('f',"Found %s! \n",name);
             delete cur_directory;
             return openFile;    
         }else{
-            DEBUG('f',"Keep on looking\n");
             int sector = cur_directory->Find(cur_name);
-            OpenFile* openFile = new OpenFile(sector);
+            DEBUG('f',"Keep on looking at sector: %d\n",sector);
+            if(sector<0){
+                DEBUG('f',"Failed to find sector of %s\n",cur_name);
+                delete cur_directory;
+                return NULL;
+            }
+            openFile = new OpenFile(sector);
             curpos = i+1;
             cur_directory->FetchFrom(openFile);
+            delete openFile;
         }
     }
 }
@@ -227,15 +233,22 @@ FileSystem::Create(char *name, int initialSize)
     FileHeader *hdr;
     int sector;
     bool success;
+    OpenFile  *fatherDirFile = NULL;
 
     DEBUG('f', "Creating file %s, size %d\n", name, initialSize);
 
+    fatherDirFile = findFatherDirbyPath(name);
+    if(fatherDirFile==directoryFile){
+        DEBUG('f',"GOT root directory. %d\n",directoryFile->Length());
+        
+    }
     directory = new Directory(NumDirEntries);
-    directory->FetchFrom(directoryFile);
+    directory->FetchFrom(fatherDirFile);
 
-    if (directory->Find(name) != -1)
+    if (directory->Find(name) != -1){
+      DEBUG('f',"Create:: file is already in directory\n");
       success = FALSE;			// file is already in directory
-    else {	
+    }else {	
         freeMap = new BitMap(NumSectors);
         freeMap->FetchFrom(freeMapFile);
         sector = freeMap->Find();	// find a sector to hold the file header
@@ -243,18 +256,22 @@ FileSystem::Create(char *name, int initialSize)
             success = FALSE;		// no free block for file header 
         else if (!directory->Add(name, sector))
             success = FALSE;	// no space in directory
-	else {
-    	    hdr = new FileHeader;
-	    if (!hdr->Allocate(freeMap, initialSize))
-            	success = FALSE;	// no space on disk for data
-	    else {	
-	    	success = TRUE;
-		// everthing worked, flush all changes back to disk
-    	    	hdr->WriteBack(sector); 		
-    	    	directory->WriteBack(directoryFile);
-    	    	freeMap->WriteBack(freeMapFile);
-	    }
-            delete hdr;
+        else {
+
+            DEBUG('f',"Create:: Create file %s\n",name);
+                hdr = new FileHeader;
+            if (!hdr->Allocate(freeMap, initialSize))
+                    success = FALSE;	// no space on disk for data
+            else {	
+
+            DEBUG('f',"Create:: everthing worked, flush all changes back to disk\n");
+                success = TRUE;
+            // everthing worked, flush all changes back to disk
+                    hdr->WriteBack(sector); 		
+                    directory->WriteBack(directoryFile);
+                    freeMap->WriteBack(freeMapFile);
+            }
+                delete hdr;
 	}
         delete freeMap;
     }
@@ -276,11 +293,12 @@ OpenFile *
 FileSystem::Open(char *name)
 { 
     Directory *directory = new Directory(NumDirEntries);
-    OpenFile *openFile = NULL;
+    OpenFile *openFile = NULL,*fatherDirFile = NULL;
     int sector;
-
+    
+    fatherDirFile = findFatherDirbyPath(name);
     DEBUG('f', "Opening file %s\n", name);
-    directory->FetchFrom(directoryFile);
+    directory->FetchFrom(fatherDirFile);
     sector = directory->Find(name); 
     if (sector >= 0) 		
 	openFile = new OpenFile(sector);	// name was found in directory 
@@ -308,10 +326,13 @@ FileSystem::Remove(char *name)
     Directory *directory;
     BitMap *freeMap;
     FileHeader *fileHdr;
+    OpenFile  *fatherDirFile = NULL;
     int sector;
     
+    fatherDirFile = findFatherDirbyPath(name);
+
     directory = new Directory(NumDirEntries);
-    directory->FetchFrom(directoryFile);
+    directory->FetchFrom(fatherDirFile);
     sector = directory->Find(name);
     if (sector == -1) {
        delete directory;

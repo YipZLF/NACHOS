@@ -47,11 +47,33 @@ FileHeader::Allocate(BitMap *freeMap, int fileSize)
 { 
     numBytes = fileSize;
     numSectors  = divRoundUp(fileSize, SectorSize);
-    if (freeMap->NumClear() < numSectors)
-	return FALSE;		// not enough space
+    if (freeMap->NumClear() < numSectors){
+        DEBUG('f',"Filehdr::Allocate:fail because of insufficient space\n");
+	    return FALSE;		// not enough space
+    }
 
-    for (int i = 0; i < numSectors; i++)
-	dataSectors[i] = freeMap->Find();
+    int i = 0;
+    int firstLevel = min(numSectors,NumFirstLevelDirect);
+    for (; i < firstLevel; i++){
+        dataSectors[i] = freeMap->Find();
+        DEBUG('f',"Filehdr::Allocate: 1st level: dataSectors[%d]:%d\n",i,dataSectors[i]);
+    }
+    if(i<numSectors){// need secondary index
+        SecondaryIndexSectors = freeMap->Find();
+        DEBUG('f',"Filehdr::Allocate: 2st level: SecondaryIndexSectors:%d\n",SecondaryIndexSectors);
+        SecondaryIndex * secondaryIndex = new SecondaryIndex;
+        int secondLevel = min(numSectors - NumFirstLevelDirect , NumIndexDirect);
+        for(i = 0;i<secondLevel;++i){
+            secondaryIndex->dataSectors[i] = freeMap->Find();
+            DEBUG('f',"Filehdr::Allocate: 2st level: sec->dataSectors[%d]:%d\n",i,secondaryIndex->dataSectors[i]);
+        }
+        synchDisk->WriteSector(SecondaryIndexSectors,(char*)secondaryIndex);
+        if( (i+NumFirstLevelDirect) < numSectors){// need third level director
+            //Not finished!!
+            DEBUG('f',"NOT FINISHED THIRD LEVEL ALLOCATE!\n");
+            Abort();
+        }
+    }
     return TRUE;
 }
 
@@ -68,6 +90,32 @@ FileHeader::Deallocate(BitMap *freeMap)
     for (int i = 0; i < numSectors; i++) {
 	ASSERT(freeMap->Test((int) dataSectors[i]));  // ought to be marked!
 	freeMap->Clear((int) dataSectors[i]);
+    }
+
+    int i = 0;
+    int firstLevel = min(numSectors,NumFirstLevelDirect);
+    for (; i < firstLevel; i++){
+        /*
+        dataSectors[i] = freeMap->Find();
+        DEBUG('f',"Filehdr::Allocate: 1st level: dataSectors[i]:%d\n",dataSectors[i]);*/
+        DEBUG('f',"Filehdr::Deallocate: 1st level: dataSectors[%d]\n",i);
+        ASSERT(freeMap->Test((int) dataSectors[i]));  // ought to be marked!
+        freeMap->Clear((int) dataSectors[i]);
+    }
+    if(i<numSectors){// need secondary index
+        SecondaryIndex * secondaryIndex = new SecondaryIndex;
+        synchDisk->ReadSector(SecondaryIndexSectors,(char*)secondaryIndex);
+        int secondLevel = min(numSectors - NumFirstLevelDirect , NumIndexDirect);
+        for(i = 0;i<secondLevel;++i){
+            freeMap->Clear(secondaryIndex->dataSectors[i]);
+            DEBUG('f',"Filehdr::Deallocate: 2st level: sec->dataSectors[%d]\n",i);
+        }
+        freeMap->Clear(SecondaryIndexSectors);
+        if( (i+NumFirstLevelDirect) < numSectors){// need third level director
+            //Not finished!!
+            DEBUG('f',"NOT FINISHED THIRD LEVEL DEALLOCATE!\n");
+            Abort();
+        }
     }
 }
 
@@ -174,7 +222,7 @@ FileHeader::Print()
     for (i = 0; i < numSectors; i++)
 	printf("%d ", dataSectors[i]);
     printf("\nFile contents:\n");
-    for (i = k = 0; i < numSectors; i++) {
+    for (i = k = 0; i < NumFirstLevelDirect; i++) {
 	synchDisk->ReadSector(dataSectors[i], data);
         for (j = 0; (j < SectorSize) && (k < numBytes); j++, k++) {
 	    if ('\040' <= data[j] && data[j] <= '\176')   // isprint(data[j])

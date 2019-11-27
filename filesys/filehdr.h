@@ -78,10 +78,17 @@ class FileHeader {
     int create_time;
     int last_modified_time;
     int last_access_time;
-    int dataSectors[NumDirect-2];		// Disk sector numbers for each data 
+    int dataSectors[NumFirstLevelDirect];		// Disk sector numbers for each data 
 					// block in the file
     int SecondaryIndexSectors;
     int ThirdLevelIndexSectors;
+    /*
+    if numSectors is within:
+      (0 , NumFirstLevelDirect) : NumNewBlocks = numSectors
+      (NumFirstLevelDirect+1 , NumFirstLevelDirect + NumIndexDirect): numSectors+1
+      (NumFirstLevelDirect + NumIndexDirect+1, NumFirstLevelDirect + NumIndexDirect + NumIndexDirect^2):numSectors + 1  + 1 + # of Secondary Index
+
+    */
 };
 
 
