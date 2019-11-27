@@ -77,6 +77,39 @@ FileHeader::Allocate(BitMap *freeMap, int fileSize)
     return TRUE;
 }
 
+int FileHeader::AppendOneSector(BitMap *freeMap){
+    if (freeMap->NumClear() == 0){
+        DEBUG('f',"Filehdr::AppendOneSector:fail because of insufficient space\n");
+	    return -1;		// not enough space
+    }
+
+
+    if(0<=numSectors && numSectors <= NumFirstLevelDirect-1){
+        DEBUG('f',"FileHeader:: 1 level index append\n");
+        int sector = freeMap->Find();
+        dataSectors[numSectors] = sector;
+        numSectors++;
+        return sector;
+    }else if(NumFirstLevelDirect-1 < numSectors && numSectors <= NumFirstLevelDirect + NumIndexDirect){
+        DEBUG('f',"FileHeader:: 2nd level index append\n");
+        int sector = freeMap->Find();
+        SecondaryIndex * secondaryIndex = new SecondaryIndex;
+        synchDisk->ReadSector(SecondaryIndexSectors,(char*)secondaryIndex);
+        int idx = numSectors - NumFirstLevelDirect;
+        secondaryIndex->dataSectors[idx] = sector;
+        synchDisk->WriteSector(SecondaryIndexSectors,(char*)secondaryIndex);
+        numSectors++;
+        return sector;
+    }else if(NumFirstLevelDirect + NumIndexDirect < numSectors  && 
+            numSectors <=NumFirstLevelDirect + NumIndexDirect + NumIndexDirect *NumIndexDirect){
+        DEBUG('f',"NOT FINISHED THIRD LEVEL APPEND SECTOR!\n");
+        Abort();
+    }else{
+        DEBUG('f',"Too large.\n");
+        Abort();
+    }
+
+}
 //----------------------------------------------------------------------
 // FileHeader::Deallocate
 // 	De-allocate all the space allocated for data blocks for this file.

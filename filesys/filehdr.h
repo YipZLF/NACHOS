@@ -55,6 +55,7 @@ class FileHeader {
     bool Allocate(BitMap *bitMap, int fileSize);// Initialize a file header, 
 						//  including allocating space 
 						//  on disk for the file data
+    int AppendOneSector(BitMap *bitmap);
     void Deallocate(BitMap *bitMap);  		// De-allocate this file's 
 						//  data blocks
 
@@ -70,7 +71,7 @@ class FileHeader {
 					// in bytes
 
     void Print();			// Print the contents of the file.
-
+    int SetFileLength(int new_file_length){numBytes = new_file_length;}
   private:
     int numBytes;			// Number of bytes in the file
     int numSectors;			// Number of data sectors in the file

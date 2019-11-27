@@ -147,19 +147,20 @@ int
 OpenFile::WriteAt(char *from, int numBytes, int position)
 {
     int fileLength = hdr->FileLength();
-    int i, firstSector, lastSector, numSectors;
+    int i, firstSector, lastSector, numSectors,lastAllocatedSector;
     bool firstAligned, lastAligned;
     char *buf;
 
     if ((numBytes <= 0) || (position >= fileLength))
 	return 0;				// check request
-    if ((position + numBytes) > fileLength)
-	numBytes = fileLength - position;
+    DEBUG('f',"Trying to make the file larger.\n"); 
+    //numBytes = fileLength - position;
     DEBUG('f', "Writing %d bytes at %d, from file of length %d.\n", 	
-			numBytes, position, fileLength);
+            numBytes, position, fileLength);
 
     firstSector = divRoundDown(position, SectorSize);
     lastSector = divRoundDown(position + numBytes - 1, SectorSize);
+    lastAllocatedSector = divRoundDown(fileLength - 1, SectorSize);
     numSectors = 1 + lastSector - firstSector;
 
     buf = new char[numSectors * SectorSize];
@@ -172,17 +173,27 @@ OpenFile::WriteAt(char *from, int numBytes, int position)
         ReadAt(buf, SectorSize, firstSector * SectorSize);	
     if (!lastAligned && ((firstSector != lastSector) || firstAligned))
         ReadAt(&buf[(lastSector - firstSector) * SectorSize], 
-				SectorSize, lastSector * SectorSize);	
+                SectorSize, lastSector * SectorSize);	
 
 // copy in the bytes we want to change 
     bcopy(from, &buf[position - (firstSector * SectorSize)], numBytes);
 
 // write modified sectors back
-    for (i = firstSector; i <= lastSector; i++)	
+    for (i = firstSector; i <= lastAllocatedSector; i++)	
         synchDisk->WriteSector(hdr->ByteToSector(i * SectorSize), 
-					&buf[(i - firstSector) * SectorSize]);
+                    &buf[(i - firstSector) * SectorSize]);
+    for(i = lastAllocatedSector + 1; i <= lastSector ;i++){
+        // Allocate one sector!!
+        int sector = fileSystem->AllocateOneMoreSector(this);	
+        synchDisk->WriteSector(sector, 
+                    &buf[(i - firstSector) * SectorSize]);
+        
+    }
+    fileLength = max(fileLength, position + numBytes);
+    hdr->SetFileLength(fileLength);
     delete [] buf;
-    return numBytes;
+    return numBytes; 
+    
 }
 
 //----------------------------------------------------------------------

@@ -60,7 +60,7 @@
 // Initial file sizes for the bitmap and directory; until the file system
 // supports extensible files, the directory size sets the maximum number 
 // of files that can be loaded onto the disk.
-#define FreeMapFileSize 	(NumSectors / BitsInByte)
+#define FreeMapFileSize 	(NumSectors / BitsInByte) //32*32/8 = 128
 #define NumDirEntries 		10
 #define DirectoryFileSize 	(sizeof(DirectoryEntry) * NumDirEntries)
 
@@ -408,3 +408,12 @@ FileSystem::Print()
     delete freeMap;
     delete directory;
 } 
+
+int FileSystem::AllocateOneMoreSector(OpenFile * file){
+    DEBUG('f',"FileSystem: Trying to allocate one more sector\n");
+    FileHeader* hdr =  file->getHeader();
+    BitMap * freeMap = new BitMap(NumSectors);
+    freeMap->FetchFrom(freeMapFile);
+    int sector = hdr->AppendOneSector(freeMap);
+    return sector;
+}
