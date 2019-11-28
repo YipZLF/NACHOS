@@ -30,6 +30,7 @@
 FileHeader::FileHeader(int cur_time, unsigned int _flag){
     create_time = last_access_time = last_modified_time = cur_time;
     flag = _flag;
+    numBytes = numSectors = 0;
 }
 //----------------------------------------------------------------------
 // FileHeader::Allocate
@@ -45,6 +46,10 @@ FileHeader::FileHeader(int cur_time, unsigned int _flag){
 bool
 FileHeader::Allocate(BitMap *freeMap, int fileSize)
 { 
+if(DebugIsEnabled('f')){
+            DEBUG('f',"FREE MAP in ALLOCATE:\n");
+            freeMap->Print();
+        }
     numBytes = fileSize;
     numSectors  = divRoundUp(fileSize, SectorSize);
     if (freeMap->NumClear() < numSectors){
@@ -68,10 +73,34 @@ FileHeader::Allocate(BitMap *freeMap, int fileSize)
             DEBUG('f',"Filehdr::Allocate: 2st level: sec->dataSectors[%d]:%d\n",i,secondaryIndex->dataSectors[i]);
         }
         synchDisk->WriteSector(SecondaryIndexSectors,(char*)secondaryIndex);
+        delete secondaryIndex;
+
         if( (i+NumFirstLevelDirect) < numSectors){// need third level director
-            //Not finished!!
-            DEBUG('f',"NOT FINISHED THIRD LEVEL ALLOCATE!\n");
-            Abort();
+            ThirdLevelIndexSectors = freeMap->Find();
+            DEBUG('f',"Filehdr::Allocate: 3rd level: ThirdIndexSectors:%d\n",ThirdLevelIndexSectors);
+            ThirdLevelIndex * thirdLevelIndex = new ThirdLevelIndex;
+
+            int sectors_left = numSectors - NumFirstLevelDirect - NumIndexDirect;
+            ASSERT(sectors_left <= NumIndexDirect*NumIndexDirect )
+
+            for(i = 0;i<NumIndexDirect;++i){
+                
+                thirdLevelIndex->SecondaryIndexSectors[i] = freeMap->Find();
+                ASSERT(thirdLevelIndex->SecondaryIndexSectors[i]>0);
+
+                SecondaryIndex * secondaryIndex = new SecondaryIndex;
+                for(int j= 0; j< NumIndexDirect; ++j){
+                    secondaryIndex->dataSectors[j] = freeMap->Find();
+                    sectors_left--;
+                    if(sectors_left==0) break;
+                }
+                synchDisk->WriteSector(thirdLevelIndex->SecondaryIndexSectors[i],(char*)secondaryIndex);
+                delete secondaryIndex;
+
+                if(sectors_left==0) break;
+            }
+            synchDisk->WriteSector(ThirdLevelIndexSectors,(char*)thirdLevelIndex);
+            delete thirdLevelIndex;
         }
     }
     return TRUE;
@@ -92,18 +121,64 @@ int FileHeader::AppendOneSector(BitMap *freeMap){
         return sector;
     }else if(NumFirstLevelDirect-1 < numSectors && numSectors <= NumFirstLevelDirect + NumIndexDirect){
         DEBUG('f',"FileHeader:: 2nd level index append\n");
+        int idx = numSectors - NumFirstLevelDirect;
+        if(idx ==0){//first secondary index
+            SecondaryIndexSectors = freeMap->Find();
+        }
         int sector = freeMap->Find();
+        
         SecondaryIndex * secondaryIndex = new SecondaryIndex;
         synchDisk->ReadSector(SecondaryIndexSectors,(char*)secondaryIndex);
-        int idx = numSectors - NumFirstLevelDirect;
         secondaryIndex->dataSectors[idx] = sector;
         synchDisk->WriteSector(SecondaryIndexSectors,(char*)secondaryIndex);
         numSectors++;
+        delete secondaryIndex;
         return sector;
     }else if(NumFirstLevelDirect + NumIndexDirect < numSectors  && 
             numSectors <=NumFirstLevelDirect + NumIndexDirect + NumIndexDirect *NumIndexDirect){
-        DEBUG('f',"NOT FINISHED THIRD LEVEL APPEND SECTOR!\n");
-        Abort();
+        DEBUG('f',"FileHeader:: 3rd level index append\n");
+        int sectors_left = numSectors - (NumFirstLevelDirect + NumIndexDirect);
+        int idx_1 = sectors_left / NumIndexDirect;
+        int idx_2 = sectors_left % NumIndexDirect;
+        if(idx_1 ==0 && idx_2==0){//first 3-level index
+            ThirdLevelIndexSectors = freeMap->Find();
+        }
+
+        ThirdLevelIndex * thirdLevelIndex = new ThirdLevelIndex;
+        SecondaryIndex * secondaryIndex = new SecondaryIndex;
+        synchDisk->ReadSector(ThirdLevelIndexSectors,(char*)thirdLevelIndex);
+
+        int sector;
+        if(idx_2==0){
+            thirdLevelIndex->SecondaryIndexSectors[idx_1] = freeMap->Find();
+            sector = freeMap->Find();
+            secondaryIndex->dataSectors[idx_2] = sector;
+            synchDisk->WriteSector(ThirdLevelIndexSectors,(char*)thirdLevelIndex);
+            synchDisk->WriteSector(thirdLevelIndex->SecondaryIndexSectors[idx_1],(char*)secondaryIndex);
+        }else{
+            synchDisk->ReadSector(thirdLevelIndex->SecondaryIndexSectors[idx_1],(char*)secondaryIndex);
+            sector = freeMap->Find();
+            secondaryIndex->dataSectors[idx_2] = sector;
+            synchDisk->WriteSector(thirdLevelIndex->SecondaryIndexSectors[idx_1],(char*)secondaryIndex);
+        }
+
+
+/*
+        if(idx_2 != (NumIndexDirect-1)){
+            synchDisk->ReadSector(thirdLevelIndex->SecondaryIndexSectors[idx_1],(char*)secondaryIndex);
+            secondaryIndex->dataSectors[idx_2] = sector;
+            synchDisk->WriteSector(thirdLevelIndex->SecondaryIndexSectors[idx_1],(char*)secondaryIndex);
+        }else{ // full
+            ASSERT(idx_2==0);
+            int new_index_sector = freeMap->Find();
+            thirdLevelIndex->SecondaryIndexSectors[idx_1+1] = new_index_sector;
+            secondaryIndex->dataSectors[idx_2] = sector;
+            synchDisk->WriteSector(new_index_sector,(char*)secondaryIndex);
+            synchDisk->WriteSector(ThirdLevelIndexSectors,(char*)thirdLevelIndex);
+        }*/
+        delete secondaryIndex; delete thirdLevelIndex;
+        numSectors++;
+        return sector;
     }else{
         DEBUG('f',"Too large.\n");
         Abort();
@@ -120,10 +195,11 @@ int FileHeader::AppendOneSector(BitMap *freeMap){
 void 
 FileHeader::Deallocate(BitMap *freeMap)
 {
+    /*
     for (int i = 0; i < numSectors; i++) {
 	ASSERT(freeMap->Test((int) dataSectors[i]));  // ought to be marked!
 	freeMap->Clear((int) dataSectors[i]);
-    }
+    }*/
 
     int i = 0;
     int firstLevel = min(numSectors,NumFirstLevelDirect);
@@ -143,11 +219,43 @@ FileHeader::Deallocate(BitMap *freeMap)
             freeMap->Clear(secondaryIndex->dataSectors[i]);
             DEBUG('f',"Filehdr::Deallocate: 2st level: sec->dataSectors[%d]\n",i);
         }
+        delete secondaryIndex;
         freeMap->Clear(SecondaryIndexSectors);
         if( (i+NumFirstLevelDirect) < numSectors){// need third level director
-            //Not finished!!
-            DEBUG('f',"NOT FINISHED THIRD LEVEL DEALLOCATE!\n");
-            Abort();
+            
+            ThirdLevelIndex * thirdLevelIndex = new ThirdLevelIndex;
+            synchDisk->ReadSector(ThirdLevelIndexSectors,(char*)thirdLevelIndex);
+
+            int sectors_left = numSectors - NumFirstLevelDirect - NumIndexDirect;
+            ASSERT(sectors_left <= NumIndexDirect*NumIndexDirect )
+            int idx_1 = sectors_left / NumIndexDirect;
+            int idx_2 = sectors_left % NumIndexDirect;
+
+            //apart from the last entry.
+            for(i = 0;i<idx_1-1;++i){
+                SecondaryIndex * secondaryIndex = new SecondaryIndex;
+                synchDisk->ReadSector(thirdLevelIndex->SecondaryIndexSectors[i],(char*)secondaryIndex);
+                for(int j = 0 ;j < NumIndexDirect;++j){
+                        freeMap->Clear(secondaryIndex->dataSectors[j]);
+                }
+                DEBUG('f',"Filehdr::Deallocate: 3rd level: third->sec[%d]\n",i);
+                delete secondaryIndex;
+                freeMap->Clear(thirdLevelIndex->SecondaryIndexSectors[i]);
+            }
+            
+            // the last entry
+            SecondaryIndex * secondaryIndex = new SecondaryIndex;
+            synchDisk->ReadSector(thirdLevelIndex->SecondaryIndexSectors[idx_1-1],(char*)secondaryIndex);
+            for(int j = 0 ;j < idx_2;++j){
+                    freeMap->Clear(secondaryIndex->dataSectors[j]);
+            }
+            DEBUG('f',"Filehdr::Deallocate: 3rd level: third->sec[%d]\n",i);
+            delete secondaryIndex;
+            freeMap->Clear(thirdLevelIndex->SecondaryIndexSectors[idx_1-1]);
+            
+            // third level index sectors itself.
+            freeMap->Clear(ThirdLevelIndexSectors);
+            delete thirdLevelIndex;
         }
     }
 }
@@ -176,6 +284,7 @@ void
 FileHeader::WriteBack(int sector)
 {
     synchDisk->WriteSector(sector, (char *)this); 
+    
 }
 
 //----------------------------------------------------------------------
@@ -202,11 +311,14 @@ FileHeader::ByteToSector(int offset)
         ASSERT(blockIndex>=0);
         if( blockIndex < NumIndexDirect){//using secondary indexing
             DEBUG('f'," 2-level index.\n");
-            SecondaryIndex * secondaryIndex;
+            SecondaryIndex * secondaryIndex=new SecondaryIndex;
+            DEBUG('f',"SecondaryIndexSectors:%d\n",SecondaryIndexSectors);
             synchDisk->ReadSector(SecondaryIndexSectors, (char *)secondaryIndex);
             DEBUG('f'," \t* IndexSectorNum:%d, DataSectorNum:%d\n",
                 SecondaryIndexSectors,secondaryIndex->dataSectors[blockIndex]);
-            return(secondaryIndex->dataSectors[blockIndex]);
+            int sector = secondaryIndex->dataSectors[blockIndex];
+            delete secondaryIndex;
+            return sector;
         }else{//using third level indexing
             DEBUG('f'," 3-level index.\n");
             blockIndex = blockIndex - NumIndexDirect;
@@ -214,8 +326,8 @@ FileHeader::ByteToSector(int offset)
             int blockIndex_2 = blockIndex % NumIndexDirect;
             ASSERT(blockIndex>=0 && blockIndex_1>=0 && blockIndex_2>=0);
 
-            ThirdLevelIndex * thirdLevelIndex;
-            SecondaryIndex * secondaryIndex;
+            ThirdLevelIndex * thirdLevelIndex= new ThirdLevelIndex;
+            SecondaryIndex * secondaryIndex=new SecondaryIndex;
             synchDisk->ReadSector(ThirdLevelIndexSectors, (char *)thirdLevelIndex);
             synchDisk->ReadSector(thirdLevelIndex->SecondaryIndexSectors[blockIndex_1],
                                     (char *)secondaryIndex);
@@ -223,7 +335,9 @@ FileHeader::ByteToSector(int offset)
             DEBUG('f'," \t* 3-Index SectorNum:%d  2-IndexSectorNum:%d, DataSectorNum:%d\n",
                 ThirdLevelIndexSectors,thirdLevelIndex->SecondaryIndexSectors[blockIndex_1],
                 secondaryIndex->dataSectors[blockIndex]);
-            return(secondaryIndex->dataSectors[blockIndex_2]);
+            int sector = secondaryIndex->dataSectors[blockIndex_2];
+            delete secondaryIndex; delete thirdLevelIndex;
+            return(sector);
         }
     }
 }
@@ -254,9 +368,11 @@ FileHeader::Print()
     printf("FileHeader contents.  File size: %d.  File blocks:\n", numBytes);
     for (i = 0; i < numSectors; i++)
 	printf("%d ", dataSectors[i]);
+        if(isDirectory()) printf(" \nisDirector? YES \n");
+    else printf(" \nisDirectory? NO \n");
     printf("\nFile contents:\n");
     for (i = k = 0; i < NumFirstLevelDirect; i++) {
-	synchDisk->ReadSector(dataSectors[i], data);
+	    synchDisk->ReadSector(dataSectors[i], data);
         for (j = 0; (j < SectorSize) && (k < numBytes); j++, k++) {
 	    if ('\040' <= data[j] && data[j] <= '\176')   // isprint(data[j])
 		printf("%c", data[j]);
@@ -267,3 +383,4 @@ FileHeader::Print()
     }
     delete [] data;
 }
+

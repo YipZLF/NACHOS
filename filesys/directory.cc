@@ -38,9 +38,10 @@
 Directory::Directory(int size)
 {
     table = new DirectoryEntry[size];
-    entryCnt = tableSize = size;
+    tableSize = size;
+    entryCnt = 0;
     for (int i = 0; i < tableSize; i++)
-    table[i].FLAG ^= IN_USE;
+    table[i].FLAG = NO_FLAG;
 	//table[i].inUse = FALSE;
 }
 
@@ -57,14 +58,22 @@ Directory::~Directory()
 //----------------------------------------------------------------------
 // Directory::FetchFrom
 // 	Read the contents of the directory from disk.
-//
+//  
+//  including control info:
+//  int tableSize
+//  int entrycnt
+//  ptr -> table
+//  
 //	"file" -- file containing the directory contents
 //----------------------------------------------------------------------
 
 void
 Directory::FetchFrom(OpenFile *file)
 {
-    (void) file->ReadAt((char *)table, tableSize * sizeof(DirectoryEntry), 0);
+    DEBUG('f',"Fetch dir from file\n");
+    (void) file->ReadAt((char *)this, 2 * sizeof(int), 0);
+    DEBUG('f',"Got tablesize %d, entryCnt: %d\n",tableSize,entryCnt);
+    (void) file->ReadAt((char *)table, tableSize * sizeof(DirectoryEntry), 2 * sizeof(int));
 }
 
 //----------------------------------------------------------------------
@@ -77,7 +86,8 @@ Directory::FetchFrom(OpenFile *file)
 void
 Directory::WriteBack(OpenFile *file)
 {
-    (void) file->WriteAt((char *)table, tableSize * sizeof(DirectoryEntry), 0);
+    (void) file->WriteAt((char *)this, 2 * sizeof(int), 0);
+    (void) file->WriteAt((char *)table, tableSize * sizeof(DirectoryEntry), 2 * sizeof(int));
 }
 
 //----------------------------------------------------------------------
@@ -93,16 +103,17 @@ Directory::FindIndex(char *name)
 {
     for (int i = 0; i < tableSize; i++)
         if(table[i].FLAG & LONG_NAME){
-            DEBUG('f',"LONG NAME:");
+            DEBUG('f',"Find index: LONG NAME:\n");
             char filename[FileNameMaxLen+ExtendedFileNameMaxLen+1];
             strncpy(filename,table[i].name, FileNameMaxLen+1); // use the space for '/0' 
-            strncpy(filename + FileNameMaxLen+1, ((LongNameDirectoryEntry*) (table+i+1))->name,ExtendedFileNameMaxLen); 
-            if ((table[i].FLAG & IN_USE) && !strncmp(filename, name, FileNameMaxLen+ExtendedFileNameMaxLen)){
+            strncpy(filename + FileNameMaxLen+1, ((LongNameDirectoryEntry*) (table+i+1))->name,ExtendedFileNameMaxLen);
+            DEBUG('f',"Now we have LONG file name %s \n",filename); 
+            if ((table[i].FLAG & IN_USE) && !strcmp(filename, name)){
                 return i;
             }
             i++;
         }else{
-            if ((table[i].FLAG & IN_USE) && !strncmp(table[i].name, name, FileNameMaxLen))
+            if ((table[i].FLAG & IN_USE) && !strcmp(table[i].name, name))
             return i;
         }
     return -1;		// name not in directory
@@ -120,10 +131,14 @@ Directory::FindIndex(char *name)
 int
 Directory::Find(char *name)
 {
+
     int i = FindIndex(name);
 
-    if (i != -1)
-	return table[i].sector;
+    if (i != -1){
+        DEBUG('f',"Found sector of file \"%s\" : %d\n",name,table[i].sector);
+	    return table[i].sector;
+    }
+    DEBUG('f',"Failed to find the sector of \"%s\"\n",name);
     return -1;
 }
 
@@ -141,18 +156,18 @@ Directory::Find(char *name)
 bool
 Directory::Add(char *name, int newSector,bool hasLongName)
 { 
+    if (FindIndex(name) != -1)//already exists
+    return FALSE;
     if(!hasLongName){
-        if (FindIndex(name) != -1)
-        return FALSE;
 
         bool found = false;
         for (int i = 0; i < tableSize; i++)
             if ((table[i].FLAG & IN_USE)==0) {// Not in used
-                DEBUG('f',"Direct::Add: Found %d-th entry. Allocate for %s.\n",i,name);
+                DEBUG('f',"Direct::Add: Found %d-th entry. Allocate for \"%s\".\n",i,name);
                 table[i].FLAG ^= IN_USE;
-                strncpy(table[i].name, name, FileNameMaxLen); 
+                strncpy(table[i].name, name, FileNameMaxLen+1); //space for '/0'
                 table[i].sector = newSector;
-                found = true;
+                found = true;entryCnt++;
                 return TRUE;
             }
         if(!found){
@@ -163,34 +178,38 @@ Directory::Add(char *name, int newSector,bool hasLongName)
             table = new_table;
             tableSize++; entryCnt++;
             table[tableSize-1].FLAG = IN_USE;
-            DEBUG('f',"Direct::Add: New %d-th entry. Allocate for %s.\n",tableSize-1,name);
-            strncpy(table[tableSize-1].name, name, FileNameMaxLen); 
+            DEBUG('f',"Direct::Add: New %d-th entry. Allocate for \"%s\".\n",tableSize-1,name);
+            strncpy(table[tableSize-1].name, name, FileNameMaxLen+1); 
             table[tableSize-1].sector = newSector;
             return TRUE;
         }
         return FALSE;	// no space.  Fix when we have extensible files. -- now we have extensible files
     }else{//has long name
         bool found = false;
-        for (int i = 0; i < tableSize; i++)
+        for (int i = 0; i < tableSize-1; i++)
             if ((table[i].FLAG & IN_USE)==0 && (table[i+1].FLAG & IN_USE)==0 ) {// Not in used
-                DEBUG('f',"Direct::Add: Found %d-th and %d-th entry. Allocate for %s.(LONG NAME)\n",i,i+1,name);
-                table[i+1].FLAG = table[i].FLAG = table[i].FLAG ^ IN_USE;
+                DEBUG('f',"Direct::Add: Found %d-th and %d-th entry. Allocate for \"%s\".(LONG NAME)\n",i,i+1,name);
+                table[i+1].FLAG ^= IN_USE; 
+                table[i].FLAG ^= IN_USE;
+                table[i].FLAG ^= LONG_NAME;
                 strncpy(table[i].name, name, FileNameMaxLen+1); // use the space for '/0' 
-                strncpy( ((LongNameDirectoryEntry*) (table+i+1))->name, name + FileNameMaxLen + 1, ExtendedFileNameMaxLen); 
+                strncpy( ((LongNameDirectoryEntry*) (table+i+1))->name, name + FileNameMaxLen + 1, ExtendedFileNameMaxLen);
+                DEBUG('f',"Direct::Add: LONG NAME, table[i].name[FileNameMaxLen]: %c, second pard:%s\n",
+                        table[i].name[FileNameMaxLen],((LongNameDirectoryEntry*) (table+i+1))->name);
                 table[i].sector = newSector;
-                found = true;
+                found = true;entryCnt++;
                 return TRUE;
             }
         if(!found){
-            DEBUG('f',"Append new entry of %s.\n",name);
-            DirectoryEntry * new_table = new DirectoryEntry[ (tableSize+1) * sizeof(DirectoryEntry)];
+            DEBUG('f',"Append new entry of \"%s\".\n",name);
+            DirectoryEntry * new_table = new DirectoryEntry[ (tableSize+2) * sizeof(DirectoryEntry)];
             bcopy(table,new_table,(tableSize) * sizeof(DirectoryEntry));
             delete [] table;
             table = new_table;
             tableSize+=2; entryCnt++;
             table[tableSize-2].FLAG = (IN_USE | LONG_NAME);
             table[tableSize-1].FLAG = (IN_USE);
-            DEBUG('f',"Direct::Add: New %d-th and %d-th entry. Allocate for %s.\n",tableSize-2,tableSize-1,name);
+            DEBUG('f',"Direct::Add: New %d-th and %d-th entry. Allocate for \"%s\".\n",tableSize-2,tableSize-1,name);
             strncpy(table[tableSize-2].name, name, FileNameMaxLen+1); // use the space for '/0' 
             strncpy( ((LongNameDirectoryEntry*) (table+tableSize-1))->name, name + FileNameMaxLen + 1, ExtendedFileNameMaxLen); 
             table[tableSize-1].sector = newSector;
@@ -211,9 +230,11 @@ bool
 Directory::Remove(char *name)
 { 
     int i = FindIndex(name);
-
+    
     if (i == -1)
 	return FALSE; 		// name not in directory
+    entryCnt--;
+    
     table[i].FLAG &= (~IN_USE);
     if(table[i].FLAG & LONG_NAME){
         table[i+1].FLAG &= (~IN_USE);
@@ -229,6 +250,7 @@ Directory::Remove(char *name)
 void
 Directory::List()
 {
+    printf(" Name\t\t Sector\n");
    for (int i = 0; i < tableSize; i++)
 	if (table[i].FLAG & IN_USE){
         if(table[i].FLAG & LONG_NAME){
@@ -236,11 +258,10 @@ Directory::List()
             char filename[FileNameMaxLen+ExtendedFileNameMaxLen+1];
             strncpy(filename,table[i].name, FileNameMaxLen+1); // use the space for '/0' 
             strncpy(filename + FileNameMaxLen+1, ((LongNameDirectoryEntry*) (table+i+1))->name,ExtendedFileNameMaxLen); 
-	        printf("%s\n", filename);
+	        printf("* %s \t\t %d \n", filename,table[i].sector);
             i++;
-        }
-        else
-	        printf("%s\n", table[i].name);
+        }else
+	        printf("* %s \t\t %d \n", table[i].name,table[i].sector);
     }
 }
 
@@ -255,13 +276,24 @@ Directory::Print()
 { 
     FileHeader *hdr = new FileHeader;
 
-    printf("Directory contents:\n");
+    printf("Directory contents: \n");
+    printf("EntryCnt:%d TableSize:%d\n",entryCnt,tableSize);
     for (int i = 0; i < tableSize; i++)
-	if (table[i].FLAG & IN_USE) {
-	    printf("Name: %s, Sector: %d\n", table[i].name, table[i].sector);
-	    hdr->FetchFrom(table[i].sector);
-	    hdr->Print();
-	}
+        if (table[i].FLAG & IN_USE) {
+            printf("Name: %s , Sector: %d \n", table[i].name, table[i].sector);
+            if(i == FATHER_HDR) continue;
+            hdr->FetchFrom(table[i].sector);
+            hdr->Print();
+        }
     printf("\n");
     delete hdr;
 }
+
+
+void 
+Directory::InitialEntry(int mySector, int fatherSector){
+    DEBUG('f',"Initialized '.' and '..' entry of directory, mySector:%d,father:%d\n",mySector,fatherSector);
+    Add(".",mySector);
+    Add("..",fatherSector);
+}
+

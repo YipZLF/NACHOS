@@ -71,7 +71,8 @@ class FileHeader {
 					// in bytes
 
     void Print();			// Print the contents of the file.
-    int SetFileLength(int new_file_length){numBytes = new_file_length;}
+    int SetFileLength(int new_file_length){numBytes = new_file_length;DEBUG('f',"Now file length:%d\n",numBytes);return numBytes;}
+    bool isDirectory(){return ( ( (flag & DIRECTORY_FILE)==0) ? false : true );}
   private:
     int numBytes;			// Number of bytes in the file
     int numSectors;			// Number of data sectors in the file

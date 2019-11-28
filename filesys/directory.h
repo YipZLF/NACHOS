@@ -29,8 +29,12 @@
 // Internal data structures kept public so that Directory operations can
 // access them directly.
 
+#define NO_FLAG 0
 #define IN_USE 1
 #define LONG_NAME 2
+
+#define MY_HDR 0
+#define FATHER_HDR 1
 
 class DirectoryEntry {
   public:
@@ -58,7 +62,7 @@ struct LongNameDirectoryEntry{
 
 class Directory {
   public:
-    Directory(int size); 		// Initialize an empty directory
+    Directory(int size=10); 		// Initialize an empty directory
 					// with space for "size" files
     ~Directory();			// De-allocate the directory
 
@@ -78,6 +82,9 @@ class Directory {
     void Print();			// Verbose print of the contents
 					//  of the directory -- all the file
 					//  names and their contents.
+    int GetTableSize(){return tableSize;}
+    //void getPath(char *path);
+    void Directory::InitialEntry(int mySector, int fatherSector);
 
   private:
     int tableSize;			// Number of directory entries(including long name entries)

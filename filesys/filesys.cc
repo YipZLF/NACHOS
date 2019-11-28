@@ -84,7 +84,7 @@ FileSystem::FileSystem(bool format)
         BitMap *freeMap = new BitMap(NumSectors);
         Directory *directory = new Directory(NumDirEntries);
 	FileHeader *mapHdr = new FileHeader;
-	FileHeader *dirHdr = new FileHeader;
+	FileHeader *dirHdr = new FileHeader(0,DIRECTORY_FILE);
 
         DEBUG('f', "Formatting the file system.\n");
 
@@ -122,8 +122,10 @@ FileSystem::FileSystem(bool format)
     // to hold the file data for the directory and bitmap.
 
         DEBUG('f', "Writing bitmap and directory back to disk.\n");
-	freeMap->WriteBack(freeMapFile);	 // flush changes to disk
-	directory->WriteBack(directoryFile);
+        freeMap->WriteBack(freeMapFile);	 // flush changes to disk
+        
+        directory->InitialEntry(DirectorySector,-1);
+        directory->WriteBack(directoryFile);
 
 	if (DebugIsEnabled('f')) {
 	    freeMap->Print();
@@ -183,6 +185,7 @@ OpenFile* FileSystem::findFatherDirbyPath(char * name){
     char cur_name[FileNameMaxLen];
     Directory * cur_directory;    
     OpenFile* openFile = directoryFile;
+  
 
     cur_directory = new Directory(NumDirEntries);
     cur_directory->FetchFrom(directoryFile);    
@@ -197,36 +200,38 @@ OpenFile* FileSystem::findFatherDirbyPath(char * name){
         name_length = i-curpos;
         bzero(cur_name,sizeof(cur_name));
         bcopy(&name[curpos],cur_name,name_length);
-
         
         DEBUG('f',"\t * cur_name:%s, len:%d i:%d\t",
                 cur_name, name_length,i);
-
         
         if(i==maxlen){
             bcopy(cur_name,name,name_length+1);
 
             DEBUG('f',"Found %s! \n",name);
             delete cur_directory;
+            if(DebugIsEnabled('f')){
+                openFile->getHeader()->Print();
+            }
             return openFile;    
         }else{
-            int sector = cur_directory->Find(cur_name);
+            int sector  = cur_directory->Find(cur_name);
             DEBUG('f',"Keep on looking at sector: %d\n",sector);
             if(sector<0){
                 DEBUG('f',"Failed to find sector of %s\n",cur_name);
                 delete cur_directory;
                 return NULL;
             }
+            if(openFile!=directoryFile) delete openFile;
             openFile = new OpenFile(sector);
+            ASSERT(openFile->getHeader()->isDirectory());
             curpos = i+1;
             cur_directory->FetchFrom(openFile);
-            delete openFile;
         }
     }
 }
 
 bool
-FileSystem::Create(char *name, int initialSize)
+FileSystem::Create(char *name, int initialSize, bool makeDir)
 {
     Directory *directory;
     BitMap *freeMap;
@@ -238,41 +243,71 @@ FileSystem::Create(char *name, int initialSize)
     DEBUG('f', "Creating file %s, size %d\n", name, initialSize);
 
     fatherDirFile = findFatherDirbyPath(name);
-    if(fatherDirFile==directoryFile){
-        DEBUG('f',"GOT root directory. %d\n",directoryFile->Length());
-        
+    if(DebugIsEnabled('f')){
+        fatherDirFile->getHeader()->Print();
     }
     directory = new Directory(NumDirEntries);
     directory->FetchFrom(fatherDirFile);
-
+    int old_table_size = directory->GetTableSize();
     if (directory->Find(name) != -1){
       DEBUG('f',"Create:: file is already in directory\n");
       success = FALSE;			// file is already in directory
-    }else {	
+    }else{	
         freeMap = new BitMap(NumSectors);
         freeMap->FetchFrom(freeMapFile);
+        if(DebugIsEnabled('f')){
+            DEBUG('f',"FREE MAP in CREATE:\n");
+            freeMap->Print();
+        }
         sector = freeMap->Find();	// find a sector to hold the file header
     	if (sector == -1) 		
             success = FALSE;		// no free block for file header 
-        else if (!directory->Add(name, sector))
-            success = FALSE;	// no space in directory
+        //else if (!directory->Add(name, sector))
+        //    success = FALSE;	// no space in directory
         else {
-
-            DEBUG('f',"Create:: Create file %s\n",name);
-                hdr = new FileHeader;
-            if (!hdr->Allocate(freeMap, initialSize))
-                    success = FALSE;	// no space on disk for data
-            else {	
-
-            DEBUG('f',"Create:: everthing worked, flush all changes back to disk\n");
-                success = TRUE;
-            // everthing worked, flush all changes back to disk
-                    hdr->WriteBack(sector); 		
-                    directory->WriteBack(directoryFile);
-                    freeMap->WriteBack(freeMapFile);
+            directory->Add(name, sector);
+            int fileSize = 0;
+            
+            if(makeDir){
+                DEBUG('f',"Create:: Create directory file %s\n",name);
+                hdr = new FileHeader(0,DIRECTORY_FILE);
+                fileSize = 2*sizeof(int) + NumDirEntries * sizeof(DirectoryEntry);// hardcoded to NumDirEntries entries
+                ASSERT(hdr->Allocate(freeMap, fileSize));
+                
+            }else{  // user file
+                DEBUG('f',"Create:: Create user file %s\n",name);
+                hdr = new FileHeader();
+                fileSize = initialSize;
+                if(fileSize == 0) fileSize++;
+                ASSERT(hdr->Allocate(freeMap, fileSize));
             }
-                delete hdr;
-	}
+            
+	
+            DEBUG('f',"Create:: everthing worked, flush all changes back to disk\n");
+            success = TRUE;
+            // everthing worked, flush all changes back to disk
+            hdr->WriteBack(sector); 
+            
+            if(directory->GetTableSize()!=old_table_size){
+                DEBUG('f',"Create:: add new entry to directory and it's been larger. Need 1 more sector\n");
+            }
+            directory->WriteBack(fatherDirFile);
+            freeMap->WriteBack(freeMapFile);
+            if(makeDir){
+                Directory * new_dir = new Directory(NumDirEntries);
+                OpenFile * new_dir_openfile = new OpenFile(sector);
+                
+                new_dir->InitialEntry(sector,directory->Find("."));
+
+                new_dir->WriteBack(new_dir_openfile);                
+                if(DebugIsEnabled('f')){
+                    new_dir->Print();
+                }
+                delete new_dir; delete new_dir_openfile;
+
+            }
+            delete hdr;
+	    }
         delete freeMap;
     }
     delete directory;
@@ -300,6 +335,7 @@ FileSystem::Open(char *name)
     DEBUG('f', "Opening file %s\n", name);
     directory->FetchFrom(fatherDirFile);
     sector = directory->Find(name); 
+    DEBUG('f',"\t **Opening file %s at sector %d\n",name,sector);
     if (sector >= 0) 		
 	openFile = new OpenFile(sector);	// name was found in directory 
     delete directory;
@@ -349,7 +385,7 @@ FileSystem::Remove(char *name)
     directory->Remove(name);
 
     freeMap->WriteBack(freeMapFile);		// flush to disk
-    directory->WriteBack(directoryFile);        // flush to disk
+    directory->WriteBack(fatherDirFile);        // flush to disk
     delete fileHdr;
     delete directory;
     delete freeMap;
@@ -362,11 +398,22 @@ FileSystem::Remove(char *name)
 //----------------------------------------------------------------------
 
 void
-FileSystem::List()
+FileSystem::List(char* name)
 {
+    OpenFile  *fatherDirFile = NULL;
+    
     Directory *directory = new Directory(NumDirEntries);
+    if(name ==NULL){
+        fatherDirFile = directoryFile;
+        directory->FetchFrom(fatherDirFile);
+    }else{
+        fatherDirFile = findFatherDirbyPath(name);
+        directory->FetchFrom(fatherDirFile);
+        int sector = directory->Find(name);
+        OpenFile name_dir(sector);
+        directory->FetchFrom(&name_dir);
+    }
 
-    directory->FetchFrom(directoryFile);
     directory->List();
     delete directory;
 }
@@ -415,5 +462,12 @@ int FileSystem::AllocateOneMoreSector(OpenFile * file){
     BitMap * freeMap = new BitMap(NumSectors);
     freeMap->FetchFrom(freeMapFile);
     int sector = hdr->AppendOneSector(freeMap);
+    freeMap->WriteBack(freeMapFile);
     return sector;
+}
+
+void FileSystem::Close(OpenFile * file){
+    int sector = file->getHdrSector();
+    FileHeader * hdr = file->getHeader();
+    hdr->WriteBack(sector);
 }

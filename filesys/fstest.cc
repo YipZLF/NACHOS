@@ -108,17 +108,17 @@ Print(char *name)
 //	  PerformanceTest -- overall control, and print out performance #'s
 //----------------------------------------------------------------------
 
-#define FileName 	"TestFile"
+#define TestFileName 	"/TestFile"
 #define Contents 	"1234567890"
 #define ContentSize 	strlen(Contents)
-#define FileSize 	((int)(ContentSize * 5000))
+#define FileSize 	((int)(ContentSize * 500))
 
 static void 
 FileWrite()
 {
     OpenFile *openFile;    
     int i, numBytes;
-
+    char FileName[10]=TestFileName;
     printf("Sequential write of %d byte file, in %d byte chunks\n", 
 	FileSize, ContentSize);
     if (!fileSystem->Create(FileName, 0)) {
@@ -132,12 +132,14 @@ FileWrite()
     }
     for (i = 0; i < FileSize; i += ContentSize) {
         numBytes = openFile->Write(Contents, ContentSize);
+        printf("Write: %s\n",Contents);
 	if (numBytes < 10) {
 	    printf("Perf test: unable to write %s\n", FileName);
 	    delete openFile;
 	    return;
 	}
     }
+    fileSystem->Close(openFile);
     delete openFile;	// close file
 }
 
@@ -148,6 +150,7 @@ FileRead()
     char *buffer = new char[ContentSize];
     int i, numBytes;
 
+    char FileName[10]=TestFileName;
     printf("Sequential read of %d byte file, in %d byte chunks\n", 
 	FileSize, ContentSize);
 
@@ -158,6 +161,7 @@ FileRead()
     }
     for (i = 0; i < FileSize; i += ContentSize) {
         numBytes = openFile->Read(buffer, ContentSize);
+        printf("Read buffer %s\n",buffer);
 	if ((numBytes < 10) || strncmp(buffer, Contents, ContentSize)) {
 	    printf("Perf test: unable to read %s\n", FileName);
 	    delete openFile;
@@ -166,20 +170,22 @@ FileRead()
 	}
     }
     delete [] buffer;
+    fileSystem->Close(openFile);
     delete openFile;	// close file
 }
 
 void
 PerformanceTest()
 {
+
+    char FileName[10]=TestFileName;
     printf("Starting file system performance test:\n");
     stats->Print();
     FileWrite();
     FileRead();
     if (!fileSystem->Remove(FileName)) {
       printf("Perf test: unable to remove %s\n", FileName);
-      return;
-    }
+    return;}
     stats->Print();
 }
 
