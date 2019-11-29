@@ -65,7 +65,7 @@ class Semaphore {
 
 class Lock {
   public:
-    Lock(char* debugName, int initialValue=1);// initialize lock to be FREE
+    Lock(char* debugName=NULL, int initialValue=1);// initialize lock to be FREE
     ~Lock();				// deallocate lock
     char* getName() { return name; }	// debugging assist
 

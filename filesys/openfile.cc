@@ -29,10 +29,15 @@
 
 OpenFile::OpenFile(int sector)
 { 
+    synchFileTable->lock[sector].Acquire();
+    synchFileTable->UsingThreadsCnt[sector]++;
+
     hdr = new FileHeader;
     hdr->FetchFrom(sector);
     seekPosition = 0;
     hdrSector = sector;
+    
+    synchFileTable->lock[sector].Release();
 }
 
 //----------------------------------------------------------------------
@@ -42,8 +47,13 @@ OpenFile::OpenFile(int sector)
 
 OpenFile::~OpenFile()
 {
+    synchFileTable->lock[hdrSector].Acquire();
+    synchFileTable->UsingThreadsCnt[hdrSector]--;
+
     hdr->WriteBack(hdrSector);
     delete hdr;
+
+    synchFileTable->lock[hdrSector].Release();
 }
 
 //----------------------------------------------------------------------
@@ -76,17 +86,21 @@ OpenFile::Seek(int position)
 int
 OpenFile::Read(char *into, int numBytes)
 {
+   
    int result = ReadAt(into, numBytes, seekPosition);
    seekPosition += result;
+
    return result;
 }
 
 int
 OpenFile::Write(char *into, int numBytes)
 {
-   int result = WriteAt(into, numBytes, seekPosition);
-   seekPosition += result;
-   return result;
+   
+    int result = WriteAt(into, numBytes, seekPosition);
+    seekPosition += result;
+    return result;
+
 }
 
 //----------------------------------------------------------------------
@@ -118,6 +132,8 @@ OpenFile::Write(char *into, int numBytes)
 int
 OpenFile::ReadAt(char *into, int numBytes, int position)
 {
+    synchFileTable->lock[hdrSector].Acquire();
+
     int fileLength = hdr->FileLength();
     int i, firstSector, lastSector, numSectors;
     char *buf;
@@ -142,12 +158,17 @@ OpenFile::ReadAt(char *into, int numBytes, int position)
     // copy the part we want
     bcopy(&buf[position - (firstSector * SectorSize)], into, numBytes);
     delete [] buf;
+
+    synchFileTable->lock[hdrSector].Release();
     return numBytes;
 }
 
 int
 OpenFile::WriteAt(char *from, int numBytes, int position)
 {
+
+   synchFileTable->lock[hdrSector].Acquire();
+
     int fileLength = hdr->FileLength();
     int i, firstSector, lastSector, numSectors,lastAllocatedSector;
     bool firstAligned, lastAligned;
@@ -201,6 +222,9 @@ OpenFile::WriteAt(char *from, int numBytes, int position)
     fileLength = max(fileLength, position + numBytes);
     hdr->SetFileLength(fileLength);
     delete [] buf;
+
+
+    synchFileTable->lock[hdrSector].Release();
     return numBytes; 
     
 }

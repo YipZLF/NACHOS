@@ -125,12 +125,14 @@ Lock::~Lock() {
     delete lock_sem;
 }
 void Lock::Acquire() {
+    DEBUG('f',"Acquired lock.\n");
     IntStatus oldLevel = interrupt->SetLevel(IntOff);
     lock_sem->P();
     lock_thread = currentThread;
     (void) interrupt->SetLevel(oldLevel);
 }
 void Lock::Release() {
+    DEBUG('f',"Released lock.\n");
     IntStatus oldLevel = interrupt->SetLevel(IntOff);
     ASSERT(lock_thread == currentThread);
     lock_sem->V();

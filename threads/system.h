@@ -68,6 +68,7 @@ extern FileSystem  *fileSystem;
 #ifdef FILESYS
 #include "synchdisk.h"
 extern SynchDisk   *synchDisk;
+extern SynchFileTable *synchFileTable;
 #endif
 
 #ifdef NETWORK

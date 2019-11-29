@@ -14,6 +14,19 @@
 #include "disk.h"
 #include "synch.h"
 
+class SynchFileTable{
+  public:
+    SynchFileTable(){
+        UsingThreadsCnt = new int[NumSectors];
+        lock = new Lock[NumSectors];
+        bzero(UsingThreadsCnt,sizeof(UsingThreadsCnt));
+    };
+    ~SynchFileTable(){delete[] UsingThreadsCnt; delete []lock;}
+    int* UsingThreadsCnt;
+    Lock* lock;
+};
+
+
 // The following class defines a "synchronous" disk abstraction.
 // As with other I/O devices, the raw physical disk is an asynchronous device --
 // requests to read or write portions of the disk return immediately,

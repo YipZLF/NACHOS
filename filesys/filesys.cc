@@ -45,11 +45,12 @@
 
 #include "copyright.h"
 
-#include "disk.h"
+#include "synchdisk.h"
 #include "bitmap.h"
 #include "directory.h"
 #include "filehdr.h"
 #include "filesys.h"
+#include "system.h"
 
 // Sectors containing the file headers for the bitmap of free sectors,
 // and the directory of files.  These file headers are placed in well-known 
@@ -379,13 +380,25 @@ FileSystem::Remove(char *name)
 
     freeMap = new BitMap(NumSectors);
     freeMap->FetchFrom(freeMapFile);
-
+    
+    bool inUse = true;
+    synchFileTable->lock[sector].Acquire();
+    while(inUse){
+        if(synchFileTable->UsingThreadsCnt[sector]==0) {
+            inUse = false;
+            break;
+        }else{
+            synchFileTable->lock[sector].Release();
+        }
+    }
     fileHdr->Deallocate(freeMap);  		// remove data blocks
     freeMap->Clear(sector);			// remove header block
     directory->Remove(name);
 
     freeMap->WriteBack(freeMapFile);		// flush to disk
     directory->WriteBack(fatherDirFile);        // flush to disk
+
+    synchFileTable->lock[sector].Release();
     delete fileHdr;
     delete directory;
     delete freeMap;
