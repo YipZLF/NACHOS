@@ -86,7 +86,6 @@ class FileSystem {
     void Print();			// List all the files and their contents
 
 		int AllocateOneMoreSector(OpenFile * file);
-		void Close(OpenFile * file);
   private:
    OpenFile* freeMapFile;		// Bit map of free disk blocks,
 					// represented as a file

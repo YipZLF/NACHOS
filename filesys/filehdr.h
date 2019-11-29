@@ -89,7 +89,6 @@ class FileHeader {
       (0 , NumFirstLevelDirect) : NumNewBlocks = numSectors
       (NumFirstLevelDirect+1 , NumFirstLevelDirect + NumIndexDirect): numSectors+1
       (NumFirstLevelDirect + NumIndexDirect+1, NumFirstLevelDirect + NumIndexDirect + NumIndexDirect^2):numSectors + 1  + 1 + # of Secondary Index
-
     */
 };
 

@@ -466,8 +466,3 @@ int FileSystem::AllocateOneMoreSector(OpenFile * file){
     return sector;
 }
 
-void FileSystem::Close(OpenFile * file){
-    int sector = file->getHdrSector();
-    FileHeader * hdr = file->getHeader();
-    hdr->WriteBack(sector);
-}

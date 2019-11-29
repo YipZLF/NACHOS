@@ -42,6 +42,7 @@ OpenFile::OpenFile(int sector)
 
 OpenFile::~OpenFile()
 {
+    hdr->WriteBack(hdrSector);
     delete hdr;
 }
 

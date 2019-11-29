@@ -139,7 +139,6 @@ FileWrite()
 	    return;
 	}
     }
-    fileSystem->Close(openFile);
     delete openFile;	// close file
 }
 
@@ -170,7 +169,6 @@ FileRead()
 	}
     }
     delete [] buffer;
-    fileSystem->Close(openFile);
     delete openFile;	// close file
 }
 
