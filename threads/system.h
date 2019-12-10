@@ -63,6 +63,11 @@ TLBMissInterruptHandler(int dummy){
 #ifdef FILESYS_NEEDED 		// FILESYS or FILESYS_STUB 
 #include "filesys.h"
 extern FileSystem  *fileSystem;
+
+#define MAX_OPENFILE_CNT 100
+extern OpenFile ** OpenFileList;
+extern int cur_openfile_cnt;
+
 #endif
 
 #ifdef FILESYS

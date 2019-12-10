@@ -30,6 +30,10 @@ Timer *timer;				// the hardware timer device,
 
 #ifdef FILESYS_NEEDED
 FileSystem  *fileSystem;
+
+OpenFile ** OpenFileList;
+int cur_openfile_cnt = 2;
+
 #endif
 
 #ifdef FILESYS
@@ -96,6 +100,7 @@ Initialize(int argc, char **argv)
 #endif
 #ifdef FILESYS_NEEDED
     bool format = FALSE;	// format disk
+    OpenFileList = new OpenFile*[MAX_OPENFILE_CNT];
 #endif
 #ifdef NETWORK
     double rely = 1;		// network reliability
@@ -169,6 +174,7 @@ Initialize(int argc, char **argv)
 
 #ifdef FILESYS_NEEDED
     fileSystem = new FileSystem(format);
+    delete [] OpenFileList;
 #endif
 
 #ifdef NETWORK

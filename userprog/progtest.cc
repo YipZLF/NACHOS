@@ -83,7 +83,7 @@ ConsoleTest (char *in, char *out)
 	writeDone->P() ;        // wait for write to finish
 	if (ch == 'q') return;  // if q, quit
     }
-}
+}/*
 void user_prog_test_exec(int arg){
 	char file[30] = "./test/sort"; 
     DEBUG('m',"Start running sort program.");
@@ -104,3 +104,4 @@ UserProgInterruptHandler(int dummy)
 	    interrupt->YieldOnReturn();
 }
 
+*/

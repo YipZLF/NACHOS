@@ -123,7 +123,7 @@ main(int argc, char **argv)
             printf (copyright);
 #ifdef USER_PROGRAM
     	if (!strcmp(*argv, "-x")) {        	// run a user program
-	    	timer = new Timer(UserProgInterruptHandler, 0, false);
+	    	//timer = new Timer(UserProgInterruptHandler, 0, false);
 			ASSERT(argc > 1);
             StartProcess(*(argv + 1));
             argCount = 2;

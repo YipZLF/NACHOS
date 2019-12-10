@@ -64,7 +64,7 @@ ExceptionHandler(ExceptionType which)
     
     if (which == SyscallException) {
         switch(type){
-            case SC_Halt:{
+                        case SC_Halt:{
                 DEBUG('a', "Shutdown, initiated by user program.\n");
                 interrupt->Halt(); break;
                 }
@@ -79,6 +79,76 @@ ExceptionHandler(ExceptionType which)
                 }*/
                 currentThread->Finish();
                 break;
+            }
+            case SC_Create:{
+                DEBUG('s',"SysCall: Called Create.\n");
+                char* name = (char*)machine->ReadRegister(4);
+                //DEBUG('s'," - Filename: \"%s \"\n",name);
+                fileSystem->Create(name,0);
+                break;
+            }
+            case SC_Open:{
+                DEBUG('s',"SysCall: Called Open.\n");
+                char* name = (char*)machine->ReadRegister(4);
+                // need better solution to manage the openfile list
+                OpenFileId id = cur_openfile_cnt;
+                OpenFile *file = fileSystem->Open(name);
+                OpenFileList[id] = file;
+
+                // need better solution to manage the openfile list
+                cur_openfile_cnt++;
+                machine->WriteRegister(2,(int)id);
+                break;
+            }
+            case SC_Close:{
+                DEBUG('s',"SysCall: Called Close.\n");
+                OpenFileId id = (OpenFileId)machine->ReadRegister(4);
+                if (id ==0 || id ==1){
+                    DEBUG('s'," - Trying to close console.\n");
+                    interrupt->Halt();
+                }
+                delete OpenFileList[id];
+                OpenFileList[id] = NULL;
+                break;
+            }
+            case SC_Write:{
+                DEBUG('s',"SysCall: Called Write.\n");
+                char * buffer = (char*)machine->ReadRegister(4);
+                int size = (int)machine->ReadRegister(5);
+                OpenFileId id = (OpenFileId)machine->ReadRegister(6);
+                ASSERT(id!=ConsoleInput);
+                if(id == ConsoleOutput){
+                    DEBUG('s'," - to console write.\n");
+                }else{
+                    OpenFile *file = OpenFileList[id];
+                    file->Write(buffer,size);
+                }
+                break;
+            }
+            case SC_Read:{
+                DEBUG('s',"SysCall: Called Read.\n");
+                char * buffer = (char*)machine->ReadRegister(4);
+                int size = (int)machine->ReadRegister(5);
+                OpenFileId id = (OpenFileId)machine->ReadRegister(6);
+                ASSERT(id!=ConsoleOutput);
+                if(id == ConsoleInput){
+                    DEBUG('s'," - from console read.\n");
+                }else{
+                    OpenFile *file = OpenFileList[id];
+                    file->Read(buffer,size);
+                }break;
+            }
+            case SC_Exec:{
+                DEBUG('s',"SysCall: Called Exec.\n");
+                interrupt->Halt();break;
+            }
+            case SC_Yield:{
+                DEBUG('s',"SysCall: Called Yield\n");
+                interrupt->Halt();break;
+            }
+            case SC_Join:{
+                DEBUG('s',"SysCall: Called Join.\n");
+                interrupt->Halt();break;
             }
             default:{
                 printf("Unexpected user mode exception %d %d\n", which, type);break;
